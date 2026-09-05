@@ -32,6 +32,42 @@ function drawTableRow(document, values, y, height, header = false) {
   });
 }
 
+function drawSawtoothBorder(document) {
+  const pageWidth = 595.28;
+  const pageHeight = 841.89;
+  const margin = 0.9 * 72 / 2.54;
+  const step = 0.28 * 72 / 2.54;
+  const amplitude = 0.16 * 72 / 2.54;
+  const offset = 0.12 * 72 / 2.54;
+
+  const drawHorizontal = (x1, y, x2) => {
+    document.moveTo(x1, y);
+    for (let x = x1 + step, index = 1; x < x2; x += step, index += 1) {
+      document.lineTo(x, y + (index % 2 ? amplitude : 0));
+    }
+    document.lineTo(x2, y);
+  };
+
+  const drawVertical = (x, y1, y2) => {
+    document.moveTo(x, y1);
+    for (let y = y1 + step, index = 1; y < y2; y += step, index += 1) {
+      document.lineTo(x + (index % 2 ? amplitude : 0), y);
+    }
+    document.lineTo(x, y2);
+  };
+
+  document.save();
+  document.lineWidth(0.5).strokeColor('#111827');
+  [0, offset].forEach((shift) => {
+    drawHorizontal(margin, margin + shift, pageWidth - margin);
+    drawHorizontal(margin, pageHeight - margin - shift, pageWidth - margin);
+    drawVertical(margin + shift, margin, pageHeight - margin);
+    drawVertical(pageWidth - margin - shift, margin, pageHeight - margin);
+    document.stroke();
+  });
+  document.restore();
+}
+
 function drawPage(document, agency, enterprise, dossiers, reference, pageNumber, pageCount, startIndex) {
   // Coordonnées PDF : origine en haut à gauche, page A4 = 595 x 842 points.
   // Les blocs ci-dessous suivent l'ordre visuel du modèle officiel fourni.
@@ -71,7 +107,7 @@ function drawPage(document, agency, enterprise, dossiers, reference, pageNumber,
   document.font('Times-Roman').fontSize(12).text(`ont effectivement démarré leur stage d’immersion d’un (01) mois, au sein de ${enterprise.raisonSociale} du ${range.start} au ${range.end}.`, 48, tableEnd + 18, { width: pageWidth - 96, align: 'justify', lineGap: 0.5 });
   // Bloc final : date, signatures et pied de page officiel.
   const signatureY = Math.max(tableEnd + 76, 500);
-  document.text(`Fait à ${agency.ville} le : ………………………`, pageWidth - 220, signatureY, { width: 172, align: 'center' });
+  document.text(`Fait à ${agency.ville} le : ……………`, pageWidth - 220, signatureY, { width: 172, align: 'center' });
   document.moveDown(0.35);
   document.font('Times-Bold').text(`Pour ${enterprise.raisonSociale}`, 72, signatureY + 52, { width: 180, align: 'center' });
   document.font('Times-Italic').fontSize(12).text('(Fonction du Signataire)', 72, signatureY + 83, { width: 180, align: 'center' });
@@ -104,6 +140,7 @@ export function buildEndStageAttestationPdf(agency, dossierOrDossiers, reference
   const document = new PDFDocument({
     size: 'A4',
     margin: 0,
+    autoFirstPage: false,
     info: {
       Title: `Attestation de fin de stage - ${firstDossier.candidat.nom} ${firstDossier.candidat.prenoms}`,
       Author: 'Agence Emploi Jeunes - Bouaké'
@@ -118,34 +155,48 @@ export function buildEndStageAttestationPdf(agency, dossierOrDossiers, reference
 
   const pageWidth = 595.28;
   const pageHeight = 841.89;
+  const margin = 2 * 72 / 2.54;
   const ministryLogo = fs.readFileSync(ministryLogoPath);
   const aejLogo = fs.readFileSync(aejLogoPath);
 
   dossiers.forEach((dossier) => {
-  const candidateName = `${dossier.candidat.nom} ${dossier.candidat.prenoms}`;
-  document.addPage();
-  document.font('Times-Roman').fillColor('#111827');
-  document.image(ministryLogo, 48, 24, { fit: [105, 58], align: 'left', valign: 'top' });
-  document.image(aejLogo, pageWidth - 158, 30, { fit: [110, 43], align: 'right', valign: 'top' });
-  document.font('Times-Bold').fontSize(7).text('REPUBLIQUE DE COTE D’IVOIRE', 48, 86, { width: 130, align: 'center' });
-  document.font('Times-Italic').fontSize(6.5).text('Union - Discipline - Travail', 48, 96, { width: 130, align: 'center' });
-  document.moveTo(48, 112).lineTo(pageWidth - 48, 112).lineWidth(0.7).stroke('#111827');
+    const candidateName = `${dossier.candidat.nom} ${dossier.candidat.prenoms}`;
+    const signatory = `${agency.directeurPrenoms || ''} ${agency.directeurNom || ''}`.trim() || 'NON RENSEIGNE';
+    const agencyName = agency.ville || 'Bouaké';
+    document.addPage();
+    drawSawtoothBorder(document);
+    document.font('Times-Roman').fillColor('#111827');
 
-  document.font('Times-Bold').fontSize(16).text('PROGRAMME SPECIAL D’IMMERSION 2026', 48, 132, { width: pageWidth - 96, align: 'center' });
-  document.font('Times-Roman').fontSize(9).text(`Ref / N° ${reference}`, 48, 166, { width: pageWidth - 96, align: 'right' });
-  document.font('Times-Bold').fontSize(14).text('ATTESTATION DE FIN DE STAGE D’IMMERSION', 48, 202, { width: pageWidth - 96, align: 'center' });
-  document.rect(95, 197, pageWidth - 190, 28).lineWidth(1.1).stroke('#111827');
+    document.image(ministryLogo, margin, 48, { fit: [5.7 * 72 / 2.54, 3.5 * 72 / 2.54], align: 'left', valign: 'top' });
+    document.image(aejLogo, pageWidth - margin - (5.7 * 72 / 2.54), 48, { fit: [5.7 * 72 / 2.54, 3.5 * 72 / 2.54], align: 'right', valign: 'top' });
+    document.font('Times-Roman').fontSize(9).text(`Ref /N°…………………/${new Date().getUTCFullYear()}/AEJ/DOP/…………/CAR`, margin, 150, { width: pageWidth - (2 * margin), align: 'center' });
 
-  document.font('Times-Roman').fontSize(14).text(`Je soussigné, ${agency.directeurPrenoms} ${agency.directeurNom}, Chef d’Agence Régionale de l’Agence Emploi Jeunes de ${agency.ville},`, 72, 270, { width: pageWidth - 144, align: 'justify', lineGap: 5 });
-  document.text(`atteste par la présente que ${dossier.candidat.sexe === 'FEMME' ? 'Madame' : 'Monsieur'} ${candidateName}, élève/étudiant(e), titulaire de la pièce d’identité N° ${dossier.candidat.numeroPieceIdentite}, a effectué un stage de fin d’immersion d’un (01) mois au sein de l’entreprise ${dossier.entreprise.raisonSociale}, du ${formatLongDate(dossier.dateDebutStage)} au ${formatLongDate(dossier.dateFinPrevisionnelle)}.`, 72, 345, { width: pageWidth - 144, align: 'justify', lineGap: 5 });
-  document.text('En foi de quoi, la présente attestation lui est délivrée pour servir et valoir ce que de droit.', 72, 470, { width: pageWidth - 144, align: 'justify', lineGap: 5 });
+    const titleY = 180;
+    document.rect(margin + 30, titleY, pageWidth - (2 * margin) - 60, 35).lineWidth(1.2).stroke('#111827');
+    document.font('Times-Bold').fontSize(16).text('ATTESTATION DE FIN DE STAGE D’IMMERSION', margin + 38, titleY + 10, { width: pageWidth - (2 * margin) - 76, align: 'center' });
 
-  document.text(`Fait à ${agency.ville}, le ………………………….`, pageWidth - 255, 555, { width: 185, align: 'center' });
-  document.font('Times-Bold').text('Le Chef d’Agence Régionale', 330, 625, { width: 180, align: 'center' });
-  document.font('Times-Roman').text(`${agency.directeurPrenoms} ${agency.directeurNom}`, 330, 735, { width: 180, align: 'center' });
+    const bodyX = margin + 22;
+    const bodyWidth = pageWidth - (2 * margin) - 44;
+    document.font('Times-Roman').fontSize(13.5).text('Je soussigné, ', bodyX, 275, { continued: true, width: bodyWidth, align: 'justify', lineGap: 6 });
+    document.font('Times-Bold').text(`Monsieur ${signatory}`, { continued: true });
+    document.font('Times-Roman').text(`, Chef d’Agence Régionale de l’Agence Emploi Jeunes de ${agencyName}, atteste par la présente que `, { continued: true });
+    document.font('Times-Bold').text(`${dossier.candidat.sexe === 'FEMME' ? 'Madame' : 'Monsieur'} ${candidateName}`, { continued: true });
+    document.font('Times-Roman').text(', élève/étudiant(e), N° de pièce : ', { continued: true });
+    document.font('Times-Bold').text(dossier.candidat.numeroPieceIdentite, { continued: true });
+    document.font('Times-Roman').text(', a effectué, dans le cadre du programme de stage d’Immersion de l’Agence Emploi Jeunes, un stage de un (1) mois, au sein de l’entreprise ', { continued: true });
+    document.font('Times-Bold').text(dossier.entreprise.raisonSociale, { continued: true });
+    document.font('Times-Roman').text(', du ', { continued: true });
+    document.font('Times-Bold').text(formatLongDate(dossier.dateDebutStage), { continued: true });
+    document.font('Times-Roman').text(' au ', { continued: true });
+    document.font('Times-Bold').text(`${formatLongDate(dossier.dateFinPrevisionnelle)}.`, { continued: false });
 
-  document.moveTo(48, pageHeight - 52).lineTo(pageWidth - 48, pageHeight - 52).lineWidth(0.5).stroke('#9ca3af');
-  document.font('Times-Roman').fontSize(10).fillColor('#6b7280').text('BPV 108 ABIDJAN / Tél : 20 21 25 90 – 20 21 06 69 / Fax : 20 21 50 58', 48, pageHeight - 39, { width: pageWidth - 96, align: 'center' });
+    document.font('Times-Roman').fontSize(13.5).text('En foi de quoi, cette Attestation lui est délivrée pour servir et valoir ce que de droit.', bodyX, 445, { width: bodyWidth, align: 'justify', lineGap: 6 });
+
+    const signatureX = pageWidth - 260;
+    const signatureWidth = 190;
+    document.font('Times-Roman').fontSize(13).text(`Fait à ${agencyName}, le …………….`, signatureX, 520, { width: signatureWidth, align: 'center' });
+    document.font('Times-Bold').fontSize(12).text(agency.directeurTitre || 'Chef d’Agence Régionale', signatureX, 595, { width: signatureWidth, align: 'center', underline: true });
+    document.font('Times-Bold').text(signatory, signatureX, 730, { width: signatureWidth, align: 'center' });
   });
   document.end();
   return complete;
