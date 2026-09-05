@@ -1,7 +1,12 @@
 import React, { useMemo } from 'react';
-import { Building2, Download, X } from 'lucide-react';
+import { Archive, Building2, Download, X } from 'lucide-react';
 
-export default function AttestationEntreprisePreview({ entrepriseId, dossiers, onClose, onDownload }) {
+export default function AttestationEntreprisePreview({ entrepriseId, dossiers, onClose, onDownload, onArchive }) {
+  const parseDate = (value) => {
+    if (!value) return Number.NaN;
+    const french = String(value).match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    return french ? new Date(`${french[3]}-${french[2]}-${french[1]}`).getTime() : new Date(value).getTime();
+  };
   // L'aperçu utilise les mêmes données que le PDF : uniquement les dossiers validés.
   const validDossiers = useMemo(() => dossiers.filter((dossier) => (
     dossier.entreprise_id === entrepriseId && ['VALIDE', 'ATTESTATION_GENEREE'].includes(dossier.statut_workflow)
@@ -10,8 +15,8 @@ export default function AttestationEntreprisePreview({ entrepriseId, dossiers, o
   if (!first) return null;
 
   const entreprise = first.entreprise;
-  const startDate = validDossiers.reduce((earliest, dossier) => dossier.date_debut_stage < earliest ? dossier.date_debut_stage : earliest, first.date_debut_stage);
-  const endDate = validDossiers.reduce((latest, dossier) => dossier.date_fin_previsionnelle > latest ? dossier.date_fin_previsionnelle : latest, first.date_fin_previsionnelle);
+  const startDate = validDossiers.reduce((earliest, dossier) => parseDate(dossier.date_debut_stage) < parseDate(earliest) ? dossier.date_debut_stage : earliest, first.date_debut_stage);
+  const endDate = validDossiers.reduce((latest, dossier) => parseDate(dossier.date_fin_previsionnelle) > parseDate(latest) ? dossier.date_fin_previsionnelle : latest, first.date_fin_previsionnelle);
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
@@ -23,6 +28,7 @@ export default function AttestationEntreprisePreview({ entrepriseId, dossiers, o
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => onDownload(entrepriseId)} className="inline-flex items-center gap-2 rounded-lg bg-aej-orange px-3 py-2 text-xs font-bold text-white hover:bg-orange-600"><Download size={15} /> Télécharger le PDF</button>
+            {onArchive && <button onClick={() => onArchive(entrepriseId)} className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-3 py-2 text-xs font-bold text-white hover:bg-slate-600"><Archive size={15} /> Archiver</button>}
             <button onClick={onClose} className="p-2 text-slate-400 hover:text-white" title="Fermer"><X size={19} /></button>
           </div>
         </div>

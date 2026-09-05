@@ -12,6 +12,7 @@ datasource db {
 // ============================================================
 
 enum Role {
+  SUPER_ADMIN
   CONSEILLER
   SERVICE_INFO
   DIRECTION
@@ -63,6 +64,7 @@ enum TypeAttestation {
 enum StatutAttestation {
   GENEREE
   ANNULEE
+  ARCHIVEE
 }
 
 // ============================================================
@@ -94,7 +96,7 @@ model Agence {
 
 model User {
   id             String @id @db.VarChar(36)
-  agenceId       String @map("agence_id") @db.VarChar(36)
+  agenceId       String? @map("agence_id") @db.VarChar(36)
   email          String @unique @db.VarChar(191)
   motDePasseHash String @map("mot_de_passe_hash") @db.VarChar(255)
 
@@ -104,7 +106,7 @@ model User {
   role Role
 
   titre  String? @db.VarChar(150)
-  avatar String? @db.VarChar(255)
+  avatar String? @db.Text
 
   actif Boolean @default(true)
 
@@ -118,7 +120,7 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  agence Agence @relation(fields: [agenceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  agence Agence? @relation(fields: [agenceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   dossiersConseiller DossierImmersion[] @relation("ConseillerDossier")
   dossiersValides    DossierImmersion[] @relation("ValidateurDossier")

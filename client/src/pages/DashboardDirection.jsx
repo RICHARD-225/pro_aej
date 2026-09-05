@@ -259,7 +259,7 @@ export default function DashboardDirection({ dossiers, stats, conseillersList: p
                     {/* Conseiller */}
                     <td className="px-5 py-4 font-bold text-slate-900">
                       <div className="flex items-center gap-3">
-                        <img src={cs.user.avatar} className="w-8 h-8 rounded-lg object-cover" alt="" />
+                        <img src={cs.user.avatar || '/logo-aej.png'} onError={(event) => { event.currentTarget.src = '/logo-aej.png'; }} className="w-8 h-8 rounded-lg object-cover" alt="Avatar" />
                         <div>
                           <div className="font-extrabold text-slate-900">{cs.user.prenoms} {cs.user.nom}</div>
                           <div className="text-[10px] text-slate-400 font-semibold">{cs.user.email}</div>

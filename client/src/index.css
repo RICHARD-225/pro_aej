@@ -12,14 +12,49 @@
     --aej-green-dark: #00663D;
     --aej-ink: #16323A;
     --aej-surface: #F4F6F8;
+    --aej-paper: #FFFCF7;
+    --aej-line: #E7E2D8;
+    --aej-muted: #68747A;
   }
   
   body {
-    background-color: var(--aej-surface);
+    background: linear-gradient(135deg, #f6f8f5 0%, #fffaf3 52%, #f3f7f5 100%);
     color: var(--aej-ink);
     font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
   }
 }
+
+.aej-dossier-list { display: grid; gap: 0.75rem; }
+.aej-dossier-row { background: rgba(255, 255, 255, 0.9); border: 1px solid var(--aej-line); border-left: 4px solid var(--aej-green); border-radius: 16px; padding: 1rem 1.1rem; box-shadow: 0 8px 24px rgba(22, 50, 58, 0.055); transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease; }
+.aej-dossier-row:hover { transform: translateY(-1px); border-color: rgba(0, 135, 81, 0.4); box-shadow: 0 12px 30px rgba(22, 50, 58, 0.1); }
+.aej-dossier-main { display: grid; grid-template-columns: minmax(125px, 0.75fr) minmax(220px, 1.4fr) minmax(190px, 1.2fr) minmax(130px, 0.65fr); gap: 1rem; align-items: center; }
+.aej-dossier-id, .aej-dossier-person, .aej-dossier-place, .aej-dossier-status { min-width: 0; }
+.aej-dossier-id { display: flex; flex-direction: column; gap: 0.25rem; }
+.aej-kicker { color: var(--aej-orange); font-size: 0.62rem; font-weight: 900; letter-spacing: 0.11em; text-transform: uppercase; }
+.aej-dossier-id strong { color: var(--aej-ink); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.75rem; overflow-wrap: anywhere; }
+.aej-date, .aej-dossier-place span, .aej-dossier-place small { display: flex; align-items: center; gap: 0.3rem; color: var(--aej-muted); font-size: 0.68rem; }
+.aej-dossier-person { display: flex; align-items: center; gap: 0.7rem; }
+.aej-avatar { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; flex: 0 0 auto; border-radius: 12px; color: #fff; background: linear-gradient(135deg, var(--aej-green), var(--aej-green-dark)); font-size: 0.68rem; font-weight: 900; }
+.aej-dossier-person h3, .aej-dossier-place strong { margin: 0; color: var(--aej-ink); font-size: 0.78rem; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aej-dossier-person p { display: flex; flex-wrap: wrap; gap: 0.55rem; margin: 0.25rem 0 0; color: var(--aej-muted); font-size: 0.67rem; }
+.aej-dossier-person p span { display: inline-flex; align-items: center; gap: 0.2rem; }
+.aej-dossier-place { display: flex; flex-direction: column; gap: 0.26rem; }
+.aej-dossier-place strong { font-size: 0.74rem; }
+.aej-dossier-status { display: flex; flex-direction: column; align-items: flex-start; gap: 0.38rem; }
+.aej-dossier-status > span:last-child { max-width: 100%; color: var(--aej-muted); font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aej-dossier-actions { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.8rem; padding-top: 0.75rem; border-top: 1px solid #f0ede7; }
+.aej-icon-button, .aej-action-button { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; border-radius: 10px; font-size: 0.7rem; font-weight: 800; transition: 160ms ease; cursor: pointer; }
+.aej-icon-button { width: 2rem; height: 2rem; color: var(--aej-muted); border: 1px solid var(--aej-line); background: #fff; }
+.aej-icon-button:hover { color: var(--aej-ink); border-color: var(--aej-green); }
+.aej-action-button { padding: 0.55rem 0.75rem; border: 1px solid transparent; }
+.aej-action-neutral { color: var(--aej-ink); background: #f0f4f1; border-color: #d8e8dc; }
+.aej-action-primary { color: #fff; background: var(--aej-green); box-shadow: 0 5px 12px rgba(0, 135, 81, 0.18); }
+.aej-action-primary:hover { background: var(--aej-green-dark); }
+.aej-empty-state { display: grid; place-items: center; gap: 0.5rem; min-height: 220px; padding: 2rem; color: var(--aej-muted); text-align: center; }
+.aej-empty-state strong { color: var(--aej-ink); font-size: 0.85rem; }
+.aej-empty-state span { font-size: 0.72rem; }
+@media (max-width: 900px) { .aej-dossier-main { grid-template-columns: 1fr 1fr; } .aej-dossier-status { align-items: flex-end; } }
+@media (max-width: 640px) { .aej-dossier-main { grid-template-columns: 1fr; gap: 0.7rem; } .aej-dossier-status { align-items: flex-start; } .aej-dossier-actions { justify-content: flex-start; } }
 
 /* Custom Scrollbars */
 ::-webkit-scrollbar {

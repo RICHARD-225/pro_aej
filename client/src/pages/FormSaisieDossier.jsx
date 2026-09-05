@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   User, 
   Phone, 
@@ -18,6 +18,12 @@ import { toDossierPayload } from '../utils/dossierMappers';
 export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, currentUser, dossiers = [], conseillersList: providedList = [] }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [errorMsg, setErrorMsg] = useState('');
+  const [validationAttempted, setValidationAttempted] = useState(false);
+
+  useEffect(() => {
+    setErrorMsg('');
+    setValidationAttempted(false);
+  }, [currentStep]);
 
   // Liste des conseillers régionaux pour attribution par le Service Info
   const conseillersList = providedList || [];
@@ -164,6 +170,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
       return updated;
     });
     setErrorMsg('');
+    setValidationAttempted(false);
   };
 
   // Remplissage rapide d'essai
@@ -255,6 +262,20 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
         setErrorMsg("Erreur de saisie : Le type de handicap doit être précisé.");
         return false;
       }
+
+      const normalizedPiece = formData.numero_piece_identite.trim().toUpperCase();
+      const normalizedContact = formData.contact_1.trim();
+      const duplicate = dossiers.find((dossier) =>
+        dossier.candidat.numero_piece_identite?.trim().toUpperCase() === normalizedPiece ||
+        dossier.candidat.contact_1?.trim() === normalizedContact
+      );
+      if (duplicate) {
+        const samePiece = duplicate.candidat.numero_piece_identite?.trim().toUpperCase() === normalizedPiece;
+        setErrorMsg(samePiece
+          ? "Doublon détecté : ce numéro de pièce d'identité existe déjà dans la base."
+          : "Doublon détecté : ce contact candidat existe déjà dans la base.");
+        return false;
+      }
     } else if (step === 2) {
       if (!formData.numero_paiement.trim()) {
         setErrorMsg("Erreur de saisie : Le 'N° de Paiement' est obligatoire.");
@@ -262,6 +283,11 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
       }
       if (!isValidPhone(formData.numero_paiement)) {
         setErrorMsg("Erreur de format : Le 'N° de Paiement' doit comporter exactement 10 chiffres (ex: 0502837295).");
+        return false;
+      }
+      const duplicatePayment = dossiers.find((dossier) => dossier.candidat.numero_paiement?.trim() === formData.numero_paiement.trim());
+      if (duplicatePayment) {
+        setErrorMsg("Doublon détecté : ce numéro de paiement existe déjà dans la base.");
         return false;
       }
       if (!formData.nom_prenoms_tuteur.trim()) {
@@ -283,6 +309,10 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
       }
       if (!formData.service_affectation.trim()) {
         setErrorMsg("Erreur de saisie : Le 'Service d'Affectation' est obligatoire.");
+        return false;
+      }
+      if (!formData.entreprise_contact_1.trim()) {
+        setErrorMsg("Erreur de saisie : Le contact de l'entreprise est obligatoire.");
         return false;
       }
       if (!isValidPhone(formData.entreprise_contact_1)) {
@@ -316,6 +346,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
 
   const handleNext = () => {
     setErrorMsg('');
+    setValidationAttempted(true);
     if (validateStep(currentStep)) {
       setErrorMsg('');
       setCurrentStep(prev => Math.min(prev + 1, 3));
@@ -324,11 +355,13 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
 
   const handlePrev = () => {
     setErrorMsg('');
+    setValidationAttempted(false);
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setValidationAttempted(true);
     if (!validateStep(3)) return;
 
     const conseillerTarget = conseillersList.find(c => c.id === formData.conseiller_attribue_id) || conseillersList[0];
@@ -413,7 +446,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
       </div>
 
       {/* EXPLICIT ERROR ALERT */}
-      {errorMsg && (
+      {errorMsg && validationAttempted && (
         <div className="p-4 bg-rose-50 border border-rose-300 rounded-2xl text-rose-800 text-xs font-bold flex items-center gap-3 animate-in shake">
           <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
           <span>{errorMsg}</span>

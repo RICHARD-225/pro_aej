@@ -7,6 +7,9 @@ import DashboardServiceInfo from './pages/DashboardServiceInfo';
 import DashboardDirection from './pages/DashboardDirection';
 import PageAttestationEntreprise from './pages/PageAttestationEntreprise';
 import ExcelPage from './pages/ExcelPage';
+import AttestationArchivePage from './pages/AttestationArchivePage';
+import SettingsPage from './pages/SettingsPage';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import GestionConseillers from './pages/GestionConseillers';
 import ChecklistModal from './components/ChecklistModal';
 import CorrectionModal from './components/CorrectionModal';
@@ -15,14 +18,16 @@ import AttestationEntreprisePreview from './components/AttestationEntreprisePrev
 import PasswordChangeModal from './components/PasswordChangeModal';
 import PasswordResetModal from './components/PasswordResetModal';
 import LoginPage from './pages/LoginPage';
-import { createDossier, generateBulkAttestation, generateDossierAttestation, generateEnterpriseAttestation, getDossiers, requestCorrection, resubmitDossier, saveChecklist } from './services/dossierService';
+import { archiveEnterpriseAttestation, createDossier, generateBulkAttestation, generateDossierAttestation, generateEnterpriseAttestation, getAttestations, getDossiers, requestCorrection, resubmitDossier, saveChecklist } from './services/dossierService';
 import { getReferentiels } from './services/referentielService';
-import { createUser, getCurrentUser, getLoginHistory, getUsers, login, logout, resetUserPassword, updateUserStatus } from './services/userService';
+import { createUser, getAgencies, getCurrentUser, getLoginHistory, getUsers, login, logout, resetUserPassword, updateUserStatus } from './services/userService';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [dossiers, setDossiers] = useState([]);
+  const [archivedEnterpriseIds, setArchivedEnterpriseIds] = useState([]);
   const [users, setUsers] = useState([]);
+  const [agences, setAgences] = useState([]);
   const [loginHistory, setLoginHistory] = useState([]);
   const [referentiels, setReferentiels] = useState({
     sous_prefectures: [],
@@ -30,7 +35,7 @@ export default function App() {
     types_entreprise: []
   });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => window.localStorage.getItem('aej:active-tab') || 'dashboard');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
 
@@ -51,9 +56,17 @@ export default function App() {
   // Une session expirée revient proprement à la connexion, sans conserver de données sensibles à l'écran.
   const loadApplication = async () => {
     const currentUserData = await getCurrentUser();
-    const [loadedDossiers, loadedReferentiels] = await Promise.all([
+    if (currentUserData.role === 'SUPER_ADMIN') {
+      setCurrentUser(currentUserData);
+      setAgences(await getAgencies());
+      setReferentiels({});
+      setLoading(false);
+      return;
+    }
+    const [loadedDossiers, loadedReferentiels, archivedAttestations] = await Promise.all([
       getDossiers(),
-      getReferentiels()
+      getReferentiels(),
+      getAttestations('ARCHIVEE').catch(() => [])
     ]);
 
     let loadedUsers = [];
@@ -70,10 +83,15 @@ export default function App() {
 
     setCurrentUser(currentUserData);
     setDossiers(loadedDossiers);
+    setArchivedEnterpriseIds([...new Set(archivedAttestations.map((item) => item.entrepriseId).filter(Boolean))]);
     setReferentiels(loadedReferentiels);
     setUsers(loadedUsers);
     setLoginHistory(loadedLoginHistory);
   };
+
+  useEffect(() => {
+    window.localStorage.setItem('aej:active-tab', activeTab);
+  }, [activeTab]);
 
   useEffect(() => {
     loadApplication().catch(() => logout()).finally(() => setLoading(false));
@@ -95,6 +113,8 @@ export default function App() {
   };
 
   const handleLogout = () => { logout(); setCurrentUser(null); setDossiers([]); setReferentiels(null); setUsers([]); };
+
+  const handleAgencyCreated = (agency) => setAgences((previous) => [agency, ...previous]);
 
   const handleCreateUser = async (payload) => {
     try {
@@ -200,13 +220,21 @@ export default function App() {
       link.download = `${entrepriseName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'entreprise'}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
+      setDossiers((previous) => previous.map((dossier) => dossier.entreprise_id === entrepriseId && ['VALIDE', 'ATTESTATION_GENEREE'].includes(dossier.statut_workflow)
+        ? { ...dossier, statut_workflow: 'ATTESTATION_GENEREE' }
+        : dossier));
       showToast('Attestation entreprise PDF générée avec succès.', 'success');
     } catch (error) {
       showToast(error.message || 'Erreur lors de la génération de l’attestation.', 'warning');
     }
   };
 
-  const handleDownloadDossierAttestation = async (dossierId) => {
+  const handleDownloadDossierAttestation = async (dossierOrId) => {
+    const dossierId = typeof dossierOrId === 'string' ? dossierOrId : dossierOrId?.id;
+    if (!dossierId) {
+      showToast('Identifiant du dossier manquant.', 'warning');
+      return;
+    }
     try {
       const blob = await generateDossierAttestation(dossierId);
       const url = URL.createObjectURL(blob);
@@ -217,9 +245,21 @@ export default function App() {
       link.download = `${baseName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'attestation'}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
+      setDossiers((previous) => previous.map((item) => item.id === dossierId ? { ...item, statut_workflow: 'ATTESTATION_GENEREE' } : item));
       showToast('Attestation individuelle téléchargée.', 'success');
     } catch (error) {
       showToast(error.message || 'Erreur lors du téléchargement de l’attestation individuelle.', 'warning');
+    }
+  };
+
+  const handleArchiveEnterpriseAttestation = async (entrepriseId) => {
+    try {
+      await archiveEnterpriseAttestation(entrepriseId);
+      setArchivedEnterpriseIds((previous) => [...new Set([...previous, entrepriseId])]);
+      setSelectedEntrepriseForAttestation(null);
+      showToast('Attestation entreprise archivée.', 'success');
+    } catch (error) {
+      showToast(error.message || 'Erreur lors de l’archivage de l’attestation.', 'warning');
     }
   };
 
@@ -269,6 +309,7 @@ export default function App() {
 
   if (loading) return <div className="min-h-screen grid place-items-center text-sm font-bold text-slate-600">Chargement sécurisé…</div>;
   if (!currentUser || !referentiels) return <LoginPage onLoginSuccess={loadApplication} />;
+  if (currentUser.role === 'SUPER_ADMIN') return <SuperAdminDashboard currentUser={currentUser} agences={agences} onLogout={handleLogout} onCreated={handleAgencyCreated} />;
 
   return (
     <div className="min-h-screen bg-[#F4F6F8] text-slate-800 flex flex-col font-sans">
@@ -331,6 +372,7 @@ export default function App() {
           {activeTab === 'attestations_entreprises' && (
             <PageAttestationEntreprise
               dossiers={dossiers}
+              archivedEnterpriseIds={archivedEnterpriseIds}
               onGenerateAttestationEntreprise={handleGenerateAttestationEntreprise}
               onDownloadDossierAttestation={handleDownloadDossierAttestation}
             />
@@ -353,16 +395,16 @@ export default function App() {
               dossiers={displayDossiers}
               counts={counts}
               onNewDossier={() => setActiveTab('nouveau')}
-              onOpenChecklist={(d) => setSelectedDossierForChecklist(d)}
               onOpenCorrection={(d) => setSelectedDossierForCorrection(d)}
               onGenerateAttestationEntreprise={handleGenerateAttestationEntreprise}
+              onDownloadDossierAttestation={handleDownloadDossierAttestation}
               onViewDetails={(d) => setSelectedDossierForHistory(d)}
               filterStatut={filterStatut}
               onFilterChange={setFilterStatut}
             />
           )}
 
-          {(activeTab === 'stats' || activeTab === 'conseillers' || (activeTab === 'dashboard' && currentUser.role === 'DIRECTION')) && (
+          {activeTab === 'dashboard' && currentUser.role === 'DIRECTION' && (
             <DashboardDirection
               dossiers={dossiers}
               stats={{ kpis: counts }}
@@ -389,6 +431,9 @@ export default function App() {
           {activeTab === 'excel' && (
             <ExcelPage currentUser={currentUser} dossiers={dossiers} />
           )}
+
+          {activeTab === 'archives' && <AttestationArchivePage />}
+          {activeTab === 'parametres' && <SettingsPage currentUser={currentUser} onUpdated={(user) => setCurrentUser(user)} />}
         </main>
       </div>
 
@@ -425,6 +470,7 @@ export default function App() {
           dossiers={dossiers}
           onClose={() => setSelectedEntrepriseForAttestation(null)}
           onDownload={handleDownloadAttestationEntreprise}
+              onArchive={handleArchiveEnterpriseAttestation}
         />
       )}
 

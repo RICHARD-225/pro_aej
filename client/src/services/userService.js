@@ -4,6 +4,14 @@ export async function getUsers() {
   return (await api('/users')).data;
 }
 
+export async function getAgencies() {
+  return (await api('/agences')).data;
+}
+
+export async function createAgency(payload) {
+  return api('/agences', { method: 'POST', body: JSON.stringify(payload) });
+}
+
 export async function getLoginHistory() {
   return (await api('/users/logins')).data;
 }
@@ -59,6 +67,10 @@ export async function login(email, password) {
 
 export async function getCurrentUser() {
   return (await api('/auth/me')).user;
+}
+
+export async function updateProfile(profile) {
+  return (await api('/auth/profile', { method: 'PATCH', body: JSON.stringify(profile) })).user;
 }
 
 export async function logout() {

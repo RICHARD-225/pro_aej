@@ -1,5 +1,5 @@
 // Point unique pour les appels HTTP : le jeton n'est jamais dupliqué dans les services métier.
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 export const getAccessToken = () => null;
 export const setAccessToken = () => {};
 export const clearAccessToken = () => {};

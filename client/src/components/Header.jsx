@@ -14,12 +14,12 @@ export default function Header({ currentUser, onLogout, onChangePassword, search
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm">
+    <header className="sticky top-0 z-30 bg-[#fffdf8]/95 backdrop-blur border-b border-[#e7e2d8] shadow-[0_8px_24px_rgba(22,50,58,0.06)]">
       {/* Ligne tricolore décorative officielle aux couleurs de l'AEJ */}
-      <div className="h-1.5 bg-gradient-to-r from-aej-orange via-orange-400 to-aej-green" />
+      <div className="h-1 bg-gradient-to-r from-aej-orange via-[#f4c76a] to-aej-green" />
 
       <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-4 h-20">
+        <div className="flex items-center justify-between gap-4 h-[4.5rem]">
           
           {/* Logo & Titre de l'Agence */}
           <button 
@@ -30,14 +30,14 @@ export default function Header({ currentUser, onLogout, onChangePassword, search
             <img 
               src="/logo-aej.png" 
               alt="Agence Emploi Jeunes" 
-              className="h-14 w-14 rounded-2xl object-contain bg-slate-50 p-1 ring-1 ring-slate-200 group-hover:scale-105 transition" 
+              className="h-12 w-12 rounded-xl object-contain bg-white p-1 ring-1 ring-[#e7e2d8] group-hover:scale-105 transition"
               onError={(event) => { event.currentTarget.style.display = 'none'; }} 
             />
             <div className="hidden sm:block">
-              <span className="block text-base sm:text-lg font-black tracking-wide text-slate-900 uppercase">
+                <span className="block text-base sm:text-lg font-black tracking-wide text-[#16323a] uppercase">
                 Agence Emploi Jeunes
               </span>
-              <span className="block text-xs font-bold text-aej-green">
+                <span className="block text-xs font-bold text-aej-green">
                 Direction Régionale du Gbêkê • Bouaké
               </span>
             </div>
@@ -57,9 +57,7 @@ export default function Header({ currentUser, onLogout, onChangePassword, search
           {/* Profil Utilisateur & Action Déconnexion */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2.5 rounded-2xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-slate-800 shadow-sm">
-              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-aej-green flex items-center justify-center font-bold">
-                <ShieldCheck className="w-4 h-4" />
-              </div>
+              {currentUser.avatar ? <img src={currentUser.avatar} alt="Avatar" onError={(event) => { event.currentTarget.src = '/logo-aej.png'; }} className="h-8 w-8 rounded-xl object-cover" /> : <div className="w-8 h-8 rounded-xl bg-emerald-100 text-aej-green flex items-center justify-center font-bold"><ShieldCheck className="w-4 h-4" /></div>}
               <div className="hidden lg:block text-left">
                 <span className="block text-xs font-black text-slate-900 leading-tight">
                   {currentUser.prenoms} {currentUser.nom}

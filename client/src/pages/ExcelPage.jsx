@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FileSpreadsheet, Upload, Download, FileText, CheckCircle, AlertCircle, Loader } from 'lucide-react';
+import { getAccessToken } from '../services/api';
 
 export default function ExcelPage({ currentUser, dossiers }) {
   const [file, setFile] = useState(null);

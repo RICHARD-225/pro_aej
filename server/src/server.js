@@ -338,7 +338,7 @@ app.post('/api/auth/verify-otp', otpLimiter, async (req, res, next) => {
 
     const updatedUser = await prisma.$transaction(async (tx) => {
       const updated = await tx.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date(), loginCount: { increment: 1 } } });
-      await tx.userSessionLog.create({ data: { id: randomUUID(), userId: updated.id, agenceId: updated.agenceId, createdAt: new Date() } });
+      if (updated.agenceId) await tx.userSessionLog.create({ data: { id: randomUUID(), userId: updated.id, agenceId: updated.agenceId, createdAt: new Date() } });
       return updated;
     });
     setAuthCookie(res, signAccessToken(updatedUser));
@@ -435,6 +435,51 @@ app.get('/api/users/logins', requireAuth, requireRole('SERVICE_INFO', 'DIRECTION
   } catch (error) { next(error); }
 });
 
+app.patch('/api/auth/profile', requireAuth, mutationLimiter, async (req, res, next) => {
+  try {
+    const nom = String(req.body?.nom || '').trim();
+    const prenoms = String(req.body?.prenoms || '').trim();
+    const titre = String(req.body?.titre || '').trim();
+    const avatar = String(req.body?.avatar || '').trim();
+    if (!nom || !prenoms) throw apiError('Le nom et le prénom sont obligatoires.');
+    if (avatar && !(/^(https?:\/\/|data:image\/)/i.test(avatar))) throw apiError('L’avatar doit être une URL http(s) ou une image valide.');
+    if (avatar.length > 2 * 1024 * 1024) throw apiError('L’avatar ne doit pas dépasser 2 Mo.');
+    const updated = await prisma.user.update({ where: { id: req.auth.sub }, data: { nom, prenoms, titre: titre || null, avatar: avatar || null } });
+    res.json({ success: true, user: toPublicUser(updated) });
+  } catch (error) { next(error); }
+});
+
+app.get('/api/agences', requireAuth, requireRole('SUPER_ADMIN'), async (_req, res, next) => {
+  try {
+    const agences = await prisma.agence.findMany({ select: { id: true, nom: true, ville: true, directeurNom: true, directeurPrenoms: true, directeurTitre: true, users: { where: { role: 'DIRECTION' }, select: { id: true, nom: true, prenoms: true, email: true, actif: true } } }, orderBy: { nom: 'asc' } });
+    res.json({ success: true, data: agences });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/agences', requireAuth, requireRole('SUPER_ADMIN'), mutationLimiter, async (req, res, next) => {
+  try {
+    const nom = String(req.body?.nom || '').trim();
+    const ville = String(req.body?.ville || '').trim();
+    const chefNom = String(req.body?.chef_nom || '').trim();
+    const chefPrenoms = String(req.body?.chef_prenoms || '').trim();
+    const chefEmail = String(req.body?.chef_email || '').trim().toLowerCase();
+    const chefTitre = String(req.body?.chef_titre || 'Chef d’agence').trim();
+    if (!nom || !ville || !chefNom || !chefPrenoms || !chefEmail) throw apiError('Agence, ville et informations du chef d’agence sont obligatoires.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(chefEmail)) throw apiError('L’email du chef d’agence est invalide.');
+    const initialPassword = String(req.body?.chef_password || `AEJ-${randomUUID().replaceAll('-', '').slice(0, 10)}!`);
+    if (initialPassword.length < 8) throw apiError('Le mot de passe initial doit contenir au moins 8 caractères.');
+    const result = await prisma.$transaction(async (tx) => {
+      const agency = await tx.agence.create({ data: { id: randomUUID(), nom, ville, directeurNom: chefNom, directeurPrenoms: chefPrenoms, directeurTitre: chefTitre } });
+      const chef = await tx.user.create({ data: { id: randomUUID(), agenceId: agency.id, email: chefEmail, nom: chefNom, prenoms: chefPrenoms, role: 'DIRECTION', titre: chefTitre, motDePasseHash: await bcrypt.hash(initialPassword, 10), actif: true, passwordChangeRequired: true } });
+      return { agency, chef };
+    });
+    res.status(201).json({ success: true, agency: result.agency, credentials: { email: result.chef.email, password: initialPassword }, chef: toPublicUser(result.chef) });
+  } catch (error) {
+    if (error?.code === 'P2002') return next(apiError('Le nom de l’agence ou l’email du chef existe déjà.', 409));
+    next(error);
+  }
+});
+
 app.post('/api/users', requireAuth, requireRole('SERVICE_INFO', 'DIRECTION'), mutationLimiter, async (req, res, next) => {
   try {
     const nom = String(req.body?.nom || '').trim();
@@ -445,7 +490,8 @@ app.post('/api/users', requireAuth, requireRole('SERVICE_INFO', 'DIRECTION'), mu
 
     if (!nom || !prenoms || !email) throw apiError('Nom, prénom(s) et email sont obligatoires.');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw apiError('L’email du conseiller est invalide.');
-    if (requestedRole !== 'CONSEILLER') throw apiError('Seuls les conseillers peuvent être créés depuis cette zone.');
+    const allowedRoles = req.auth.role === 'DIRECTION' ? ['CONSEILLER', 'SERVICE_INFO'] : ['CONSEILLER'];
+    if (!allowedRoles.includes(requestedRole)) throw apiError(req.auth.role === 'DIRECTION' ? 'Le chef d’agence peut créer un conseiller ou un Service Informatique.' : 'Le Service Informatique peut uniquement créer un conseiller.');
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) throw apiError(existingUser.actif ? 'Cette adresse e-mail est déjà utilisée par un compte actif.' : 'Cette adresse e-mail appartient à un compte désactivé. Réactivez ce compte ou utilisez une autre adresse.', 409);
 
@@ -463,7 +509,7 @@ app.post('/api/users', requireAuth, requireRole('SERVICE_INFO', 'DIRECTION'), mu
         email,
         nom,
         prenoms,
-        role: 'CONSEILLER',
+        role: requestedRole,
         titre: titre || 'Conseiller Emploi',
         motDePasseHash: await bcrypt.hash(finalPassword, 8),
         actif: true,
@@ -555,7 +601,7 @@ app.get('/api/dossiers/export-excel', requireAuth, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 // import
-app.post('/api/dossiers/import-excel', requireAuth, requireRole('CONSEILLER', 'SERVICE_INFO'), multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: (_req, file, cb) => {
+app.post('/api/dossiers/import-excel', requireAuth, requireRole('CONSEILLER', 'SERVICE_INFO', 'DIRECTION'), multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: (_req, file, cb) => {
   const allowed = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
   if (allowed.includes(file.mimetype) || file.originalname.match(/\.(xlsx|xls)$/i)) cb(null, true); else cb(new Error('Seuls les fichiers Excel (.xlsx, .xls) sont acceptés.'));
 } }).single('file'), async (req, res, next) => {
@@ -584,7 +630,12 @@ app.post('/api/dossiers/import-excel', requireAuth, requireRole('CONSEILLER', 'S
           const conseiller = await tx.user.findFirst({ where: { id: conseillerId, agenceId: req.auth.agenceId, role: 'CONSEILLER', actif: true } });
           if (!conseiller) throw apiError('Conseiller introuvable dans cette agence.', 404);
           const duplicate = await tx.candidat.findFirst({ where: { OR: [{ numeroPieceIdentite: data.candidat.numeroPieceIdentite }, { contact1: data.candidat.contact1 }] } });
-          if (duplicate) throw apiError('Un candidat possède déjà cette pièce d\'identité ou ce téléphone.', 409);
+          if (duplicate) {
+            if (duplicate.numeroPieceIdentite === data.candidat.numeroPieceIdentite) throw apiError("Doublon détecté : ce numéro de pièce d'identité existe déjà dans la base.", 409);
+            throw apiError('Doublon détecté : ce contact candidat existe déjà dans la base.', 409);
+          }
+          const duplicatePayment = await tx.candidat.findFirst({ where: { numeroPaiement: data.candidat.numeroPaiement } });
+          if (duplicatePayment) throw apiError('Doublon détecté : ce numéro de paiement existe déjà dans la base.', 409);
           const existingEntreprise = await tx.entreprise.findFirst({ where: { raisonSociale: data.entreprise.raisonSociale, dossiers: { some: { agenceId: req.auth.agenceId } } } });
           const types = await ensureVerificationTypes(tx);
           if (types.length !== 9) throw apiError('Les 9 types de vérification ne sont pas initialisés.', 500);
@@ -621,7 +672,7 @@ app.get('/api/dossiers/:id', requireAuth, async (req, res, next) => {
   catch (error) { next(error); }
 });
 
-app.post('/api/dossiers', requireAuth, requireRole('CONSEILLER', 'SERVICE_INFO'), mutationLimiter, async (req, res, next) => {
+app.post('/api/dossiers', requireAuth, requireRole('CONSEILLER', 'SERVICE_INFO', 'DIRECTION'), mutationLimiter, async (req, res, next) => {
   try {
     const conseillerId = req.auth.role === 'CONSEILLER' ? req.auth.sub : String(req.body.conseiller_id || '');
     if (!conseillerId) throw apiError('Un conseiller destinataire est requis.');
@@ -630,7 +681,12 @@ app.post('/api/dossiers', requireAuth, requireRole('CONSEILLER', 'SERVICE_INFO')
       if (!conseiller) throw apiError('Conseiller introuvable dans cette agence.');
       const data = toCreateData(req.body, conseillerId, req.auth.agenceId);
       const duplicate = await tx.candidat.findFirst({ where: { OR: [{ numeroPieceIdentite: data.candidat.numeroPieceIdentite }, { contact1: data.candidat.contact1 }] } });
-      if (duplicate) throw apiError("Un candidat possède déjà cette pièce d'identité ou ce téléphone.", 409);
+      if (duplicate) {
+        if (duplicate.numeroPieceIdentite === data.candidat.numeroPieceIdentite) throw apiError("Doublon détecté : ce numéro de pièce d'identité existe déjà dans la base.", 409);
+        throw apiError('Doublon détecté : ce contact candidat existe déjà dans la base.', 409);
+      }
+      const duplicatePayment = await tx.candidat.findFirst({ where: { numeroPaiement: data.candidat.numeroPaiement } });
+      if (duplicatePayment) throw apiError('Doublon détecté : ce numéro de paiement existe déjà dans la base.', 409);
       const existingEntreprise = await tx.entreprise.findFirst({ where: { raisonSociale: data.entreprise.raisonSociale, dossiers: { some: { agenceId: req.auth.agenceId } } } });
       const types = await ensureVerificationTypes(tx);
       if (types.length !== 9) throw apiError('Les 9 types de vérification ne sont pas initialisés.', 500);
@@ -655,7 +711,7 @@ app.post('/api/dossiers', requireAuth, requireRole('CONSEILLER', 'SERVICE_INFO')
   } catch (error) { next(error); }
 });
 
-app.put('/api/dossiers/:id/checklist', requireAuth, requireRole('SERVICE_INFO'), mutationLimiter, async (req, res, next) => {
+app.put('/api/dossiers/:id/checklist', requireAuth, requireRole('SERVICE_INFO', 'DIRECTION'), mutationLimiter, async (req, res, next) => {
   try {
     const checklist = req.body?.checklist;
     if (!checklist || checklistKeys.some((key) => typeof checklist[key] !== 'boolean')) throw apiError('La checklist complète à 9 points est requise.');
@@ -675,7 +731,7 @@ app.put('/api/dossiers/:id/checklist', requireAuth, requireRole('SERVICE_INFO'),
   } catch (error) { next(error); }
 });
 
-app.post('/api/dossiers/:id/correct', requireAuth, requireRole('SERVICE_INFO'), mutationLimiter, async (req, res, next) => {
+app.post('/api/dossiers/:id/correct', requireAuth, requireRole('SERVICE_INFO', 'DIRECTION'), mutationLimiter, async (req, res, next) => {
   try {
     const motif = String(req.body?.motif || '').trim();
     const checklist = req.body?.checklist;
@@ -719,6 +775,12 @@ app.put('/api/dossiers/:id/resubmit', requireAuth, requireRole('CONSEILLER'), mu
       const dossier = await findAuthorizedDossier(req.params.id, req.auth, tx);
       if (dossier.statutWorkflow !== 'CORRECTION_DEMANDEE') throw apiError('Seul un dossier en correction peut être resoumis.', 409);
       assertWorkflowTransition(dossier.statutWorkflow, 'RESOUMIS');
+      const correctionPoints = req.body?.correction_points || {};
+      const pendingCorrectionPoints = checklistState(dossier)
+        .filter(({ item }) => item && !item.conforme)
+        .map(({ key }) => key)
+        .filter((key) => correctionPoints[key] !== true);
+      if (pendingCorrectionPoints.length) throw apiError('Toutes les corrections demandées doivent être confirmées avant la resoumission.', 409);
       const data = toCreateData(req.body, dossier.conseillerId, dossier.agenceId);
       const { id: _candidatId, tuteurs, ...candidat } = data.candidat;
       const { id: _entrepriseId, ...entreprise } = data.entreprise;
@@ -750,11 +812,12 @@ app.post('/api/attestations/entreprise', requireAuth, requireRole('CONSEILLER', 
     const where = {
       agenceId: req.auth.agenceId,
       entrepriseId,
-      statutWorkflow: { in: ['VALIDE', 'ATTESTATION_GENEREE'] },
-      ...(req.auth.role === 'CONSEILLER' ? { conseillerId: req.auth.sub } : {})
+      statutWorkflow: { not: 'ARCHIVE' }
     };
     const dossiers = await prisma.dossierImmersion.findMany({ where, include: dossierInclude, orderBy: { dateDebutStage: 'asc' } });
-    if (!dossiers.length) throw apiError('Aucun dossier validé pour cette entreprise.', 404);
+    if (!dossiers.length) throw apiError('Aucun dossier trouvé pour cette entreprise.', 404);
+    const nonValides = dossiers.filter((dossier) => !['VALIDE', 'ATTESTATION_GENEREE'].includes(dossier.statutWorkflow));
+    if (nonValides.length) throw apiError(`Impression impossible : ${nonValides.length} dossier(s) de cette entreprise ne sont pas encore validé(s).`, 409);
     const agency = dossiers[0].agence;
     const enterprise = dossiers[0].entreprise;
     const reference = `ATT-ENT-${new Date().getFullYear()}-${randomUUID().replaceAll('-', '').slice(0, 10).toUpperCase()}`;
@@ -778,7 +841,7 @@ app.post('/api/attestations/entreprise', requireAuth, requireRole('CONSEILLER', 
   } catch (error) { next(error); }
 });
 
-app.post('/api/attestations/dossier/:id', requireAuth, requireRole('SERVICE_INFO'), mutationLimiter, async (req, res, next) => {
+app.post('/api/attestations/dossier/:id', requireAuth, requireRole('SERVICE_INFO', 'CONSEILLER', 'DIRECTION'), mutationLimiter, async (req, res, next) => {
   try {
     const dossier = await prisma.$transaction(async (tx) => {
       const selected = await findAuthorizedDossier(req.params.id, req.auth, tx);
@@ -833,7 +896,7 @@ app.post('/api/attestations/dossier/:id', requireAuth, requireRole('SERVICE_INFO
   } catch (error) { next(error); }
 });
 
-app.post('/api/attestations/lot', requireAuth, requireRole('SERVICE_INFO'), mutationLimiter, async (req, res, next) => {
+app.post('/api/attestations/lot', requireAuth, requireRole('SERVICE_INFO', 'DIRECTION'), mutationLimiter, async (req, res, next) => {
   try {
     const dossierIds = Array.isArray(req.body?.dossier_ids) ? req.body.dossier_ids.map((id) => String(id)) : [];
     if (!dossierIds.length) throw apiError('Au moins un dossier est requis pour générer un lot d’attestations.', 400);
@@ -857,8 +920,14 @@ app.post('/api/attestations/lot', requireAuth, requireRole('SERVICE_INFO'), muta
         await Promise.all(validDossiers.map((dossier) => tx.historiqueAudit.create({ data: { dossierId: dossier.id, auteurId: req.auth.sub, action: 'Génération attestation lot', ancienStatut: 'VALIDE', nouveauStatut: 'ATTESTATION_GENEREE', description: numeroAttestation } })));
       }
 
-      await tx.attestation.createMany({
-        data: dossiers.map((dossier) => ({
+      const existing = await tx.attestation.findMany({
+        where: { dossierId: { in: dossiers.map((dossier) => dossier.id) }, typeAttestation: 'FIN_STAGE', statut: 'GENEREE' },
+        select: { dossierId: true }
+      });
+      const existingIds = new Set(existing.map((attestation) => attestation.dossierId));
+      const missing = dossiers.filter((dossier) => !existingIds.has(dossier.id));
+      if (missing.length) await tx.attestation.createMany({
+        data: missing.map((dossier) => ({
           id: randomUUID(),
           typeAttestation: 'FIN_STAGE',
           numeroAttestation: `${numeroAttestation}-${dossier.id.slice(-6)}`,
@@ -868,7 +937,7 @@ app.post('/api/attestations/lot', requireAuth, requireRole('SERVICE_INFO'), muta
           periodeDebut: dossier.dateDebutStage,
           periodeFin: dossier.dateFinPrevisionnelle,
           genereeParId: req.auth.sub,
-          cheminFichier: `attestations/${numeroAttestation}.pdf`,
+          cheminFichier: `attestations/${numeroAttestation}-${dossier.id}.pdf`,
           statut: 'GENEREE'
         }))
       });
@@ -878,6 +947,36 @@ app.post('/api/attestations/lot', requireAuth, requireRole('SERVICE_INFO'), muta
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${sanitizeFilename(group.entrepriseName)}.pdf"`);
     res.send(pdf);
+  } catch (error) { next(error); }
+});
+
+app.get('/api/attestations', requireAuth, async (req, res, next) => {
+  try {
+    const status = String(req.query.statut || '').trim();
+    const attestations = await prisma.attestation.findMany({
+      where: { agenceId: req.auth.agenceId, ...(status ? { statut: status } : {}), ...(req.auth.role === 'CONSEILLER' ? { OR: [{ dossier: { conseillerId: req.auth.sub } }, { typeAttestation: 'ENTREPRISE', genereeParId: req.auth.sub }] } : {}) },
+      include: { entreprise: true, dossier: { include: { candidat: true } } },
+      orderBy: { dateGeneration: 'desc' }
+    });
+    res.json({ success: true, data: attestations });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/attestations/entreprise/:entrepriseId/archive', requireAuth, requireRole('CONSEILLER', 'SERVICE_INFO', 'DIRECTION'), mutationLimiter, async (req, res, next) => {
+  try {
+    const entrepriseId = String(req.params.entrepriseId || '').trim();
+    const archived = await prisma.attestation.updateMany({
+      where: {
+        agenceId: req.auth.agenceId,
+        entrepriseId,
+        typeAttestation: 'ENTREPRISE',
+        statut: 'GENEREE',
+        ...(req.auth.role === 'CONSEILLER' ? { genereeParId: req.auth.sub } : {})
+      },
+      data: { statut: 'ARCHIVEE' }
+    });
+    if (!archived.count) throw apiError('Aucune attestation entreprise active à archiver.', 404);
+    res.json({ success: true, archived: archived.count });
   } catch (error) { next(error); }
 });
 
@@ -911,6 +1010,8 @@ const startServer = async () => {
   await ensureVerificationTypes();
   app.listen(PORT, () => console.log(`[AEJ Bouaké] API démarrée sur le port ${PORT}`));
 };
+
+export { app };
 
 const isDirectExecution = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isDirectExecution) {

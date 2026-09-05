@@ -10,12 +10,15 @@ const users = [
   { id: 'user-dir-1', email: 'direction@emploi.ci', nom: 'TOURE', prenoms: 'Ibrahim', role: 'DIRECTION', titre: 'Directeur Régional AEJ Bouaké' }
 ];
 
+const superAdmin = { id: 'user-super-admin', email: 'aejsuperadmin@gmail.com', nom: 'SUPER', prenoms: 'Administrateur AEJ', role: 'SUPER_ADMIN', titre: 'Super Administrateur National' };
+
 const password = process.env.SEED_PASSWORD;
 if (!password || password.length < 8) {
   throw new Error('SEED_PASSWORD doit contenir au moins 8 caractères.');
 }
 
 const passwordHash = await bcrypt.hash(password, 8);
+const superAdminPasswordHash = await bcrypt.hash(process.env.SUPER_ADMIN_PASSWORD || 'AEjadmin2026', 10);
 
 const agence = {
   id: 'AGENCE-BOUAKE-001',
@@ -52,6 +55,12 @@ try {
       create: { ...user, agenceId: 'AGENCE-BOUAKE-001', motDePasseHash: passwordHash, actif: true }
     });
   }
+
+  await prisma.user.upsert({
+    where: { email: superAdmin.email },
+    update: { ...superAdmin, agenceId: null, motDePasseHash: superAdminPasswordHash, actif: true },
+    create: { ...superAdmin, agenceId: null, motDePasseHash: superAdminPasswordHash, actif: true }
+  });
 
   for (const [libelle, description, ordreAffichage] of typesVerification) {
     await prisma.typeVerification.upsert({

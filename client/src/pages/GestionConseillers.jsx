@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 import { Users, Plus, Mail, UserRound, Briefcase, CheckCircle2, Search, Filter } from 'lucide-react';
+import UserDetailsModal from '../components/UserDetailsModal';
+import LoginHistoryModal from '../components/LoginHistoryModal';
 
 export default function GestionConseillers({ currentUser, users, loginHistory = [], onCreateUser, onUserStatusChange, onResetPassword }) {
-  const [form, setForm] = useState({ nom: '', prenoms: '', email: '', password: '', titre: 'Conseiller Emploi' });
+  const [form, setForm] = useState({ nom: '', prenoms: '', email: '', password: '', titre: 'Conseiller Emploi', role: 'CONSEILLER' });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showLoginHistory, setShowLoginHistory] = useState(false);
 
-  const conseillers = users.filter((u) => u.role === 'CONSEILLER');
-  const filteredConseillers = conseillers.filter((user) => {
+  const agencyUsers = users.filter((u) => u.role === 'CONSEILLER' || u.role === 'SERVICE_INFO');
+  const filteredConseillers = agencyUsers.filter((user) => {
     const query = searchTerm.trim().toLowerCase();
     const haystack = `${user.prenoms || ''} ${user.nom || ''} ${user.email || ''} ${user.titre || ''}`.toLowerCase();
     const matchesSearch = !query || haystack.includes(query);
@@ -53,12 +57,12 @@ export default function GestionConseillers({ currentUser, users, loginHistory = 
       email,
       password,
       titre: form.titre || 'Conseiller Emploi',
-      role: 'CONSEILLER'
+      role: form.role
     });
 
     setLoading(false);
     if (result) {
-      setForm({ nom: '', prenoms: '', email: '', password: '', titre: 'Conseiller Emploi' });
+      setForm({ nom: '', prenoms: '', email: '', password: '', titre: 'Conseiller Emploi', role: 'CONSEILLER' });
       setMessage(`Le conseiller ${result.user?.prenoms || prenoms} ${result.user?.nom || nom} a bien été créé avec succès !`);
     }
   };
@@ -68,7 +72,7 @@ export default function GestionConseillers({ currentUser, users, loginHistory = 
       <div className="rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-aej-green p-6 text-white shadow-lg">
         <div className="flex items-center gap-3 mb-2">
           <Users className="h-8 w-8 text-aej-green" />
-          <h1 className="text-2xl font-bold">Gestion des conseillers</h1>
+          <h1 className="text-2xl font-bold">Gestion des utilisateurs de l’agence</h1>
         </div>
         <p className="text-sm text-slate-200">
           Ajouter un conseiller à l’agence en définissant son compte et son mot de passe pour la saisie et le suivi.
@@ -79,7 +83,7 @@ export default function GestionConseillers({ currentUser, users, loginHistory = 
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-5">
             <Plus className="text-aej-orange" size={20} />
-            <h2 className="text-xl font-bold text-slate-800">Ajouter un nouveau conseiller</h2>
+            <h2 className="text-xl font-bold text-slate-800">Ajouter un utilisateur</h2>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -102,6 +106,8 @@ export default function GestionConseillers({ currentUser, users, loginHistory = 
                 <input name="email" type="email" value={form.email} onChange={handleChange} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm focus:border-aej-green focus:outline-none focus:ring-2 focus:ring-emerald-100" placeholder="nom.prenom@emploi.ci" />
               </div>
             </label>
+
+            <label className="block"><span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Rôle *</span><select name="role" value={form.role} onChange={handleChange} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"><option value="CONSEILLER">Conseiller</option>{currentUser?.role === 'DIRECTION' && <option value="SERVICE_INFO">Service Informatique</option>}</select></label>
 
             <label className="block">
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Mot de passe initial * (6 caractères min.)</span>
@@ -139,10 +145,10 @@ export default function GestionConseillers({ currentUser, users, loginHistory = 
             <div className="flex items-center justify-between gap-3 mb-5">
               <div className="flex items-center gap-2">
                 <UserRound className="text-aej-green" size={20} />
-                <h2 className="text-xl font-bold text-slate-800">Conseillers actifs</h2>
+                <h2 className="text-xl font-bold text-slate-800">Utilisateurs de l’agence</h2>
               </div>
               <div className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
-                {filteredConseillers.length}/{conseillers.length}
+                {filteredConseillers.length}/{agencyUsers.length}
               </div>
             </div>
 
@@ -183,12 +189,13 @@ export default function GestionConseillers({ currentUser, users, loginHistory = 
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="font-bold text-slate-800">{user.prenoms} {user.nom}</p>
-                        <p className="text-xs text-slate-500">{user.titre || 'Conseiller Emploi'}</p>
+                        <p className="text-xs text-slate-500">{user.titre || (user.role === 'SERVICE_INFO' ? 'Service Informatique' : 'Conseiller Emploi')}</p>
                       </div>
                       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${user.actif ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
                         <CheckCircle2 size={12} /> {user.actif ? 'Actif' : 'Inactif'}
                       </span>
                     </div>
+                    <button type="button" onClick={() => setSelectedUser(user)} className="mt-3 rounded-lg border border-aej-green/30 bg-white px-3 py-1.5 text-xs font-bold text-aej-green hover:bg-emerald-50">Voir le profil</button>
                     <div className="mt-2 flex items-center gap-2 text-xs text-slate-600">
                       <Mail size={12} />
                       <span>{user.email}</span>
@@ -208,39 +215,16 @@ export default function GestionConseillers({ currentUser, users, loginHistory = 
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-5">
-              <CheckCircle2 className="text-aej-orange" size={20} />
-              <h2 className="text-xl font-bold text-slate-800">Historique de connexion du jour</h2>
-            </div>
-
-            <div className="space-y-3">
-              {loginRecords.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                  Aucune connexion enregistrée aujourd’hui.
-                </div>
-              ) : (
-                loginRecords.map((entry) => (
-                  <div key={entry.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-bold text-slate-800">{entry.prenoms} {entry.nom}</p>
-                        <p className="text-xs text-slate-500">{entry.email}</p>
-                      </div>
-                      <span className="rounded-full bg-slate-900 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-                        {entry.role}
-                      </span>
-                    </div>
-                    <div className="mt-2 text-[11px] text-slate-500">
-                      Connecté le {new Date(entry.createdAt).toLocaleString('fr-FR')}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+        </div>
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2"><CheckCircle2 className="text-aej-orange" size={20} /><div><h2 className="text-base font-bold text-slate-800">Historique de connexion</h2><p className="text-xs text-slate-500">{loginRecords.length} connexion(s) enregistrée(s).</p></div></div>
+            <button type="button" onClick={() => setShowLoginHistory(true)} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white">Voir l'historique</button>
           </div>
         </div>
       </div>
+      {selectedUser && <UserDetailsModal user={selectedUser} onClose={() => setSelectedUser(null)} />}
+      {showLoginHistory && <LoginHistoryModal records={loginRecords} onClose={() => setShowLoginHistory(false)} />}
     </div>
   );
 }

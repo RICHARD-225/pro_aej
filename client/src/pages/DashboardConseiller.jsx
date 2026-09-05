@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import StatusBadge from '../components/StatusBadge';
+import DossierList from '../components/DossierList';
 import { 
   FileText, 
   Search, 
@@ -271,7 +272,20 @@ export default function DashboardConseiller({
           <span className="text-[11px] text-slate-400 font-semibold">Suivi dynamique</span>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="px-4 py-4 bg-[#fbfaf6]">
+          <DossierList
+            dossiers={filteredDossiers}
+            emptyMessage="Modifiez les filtres ou la recherche pour retrouver un dossier."
+            onOpenCorrection={onOpenCorrection}
+            onViewHistory={onViewDetails}
+            onPrimaryAction={showEndStageAttestation ? onDownloadDossierAttestation : undefined}
+            primaryLabel="Fin de stage"
+            primaryTitle="Télécharger l'attestation individuelle de fin de stage"
+            primaryIcon={FileText}
+          />
+        </div>
+
+        <div className="hidden">
           <table className="w-full text-left text-xs font-normal border-collapse">
             <thead className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-extrabold text-[11px] uppercase tracking-wider">
               <tr>

@@ -9,7 +9,9 @@ import {
   AlertCircle,
   Users,
   Building2,
-  UserRoundPlus
+  UserRoundPlus,
+  Archive
+  ,Settings
 } from 'lucide-react';
 
 export default function Sidebar({ activeTab, onTabChange, role, counts }) {
@@ -23,17 +25,21 @@ export default function Sidebar({ activeTab, onTabChange, role, counts }) {
           { id: 'attestations_entreprises', label: 'Attestations Entreprises', icon: Building2, badge: counts.valides, badgeColor: 'bg-emerald-600' },
           { id: 'valides', label: 'Dossiers Validés', icon: CheckCircle, badge: counts.valides },
           { id: 'stats', label: 'Rapports & Statistiques', icon: BarChart3 },
-          { id: 'excel', label: 'Import / Export Excel', icon: FileSpreadsheet }
+          { id: 'excel', label: 'Import / Export Excel', icon: FileSpreadsheet },
+          { id: 'archives', label: 'Archives attestations', icon: Archive }
+          ,{ id: 'parametres', label: 'Paramètres', icon: Settings }
         ];
 
       case 'DIRECTION':
         return [
-          { id: 'stats', label: 'Tableau de Bord Direction', icon: BarChart3 },
-          { id: 'conseillers', label: 'Suivi des Conseillers', icon: Users },
+          { id: 'dashboard', label: 'Tableau de Bord Direction', icon: BarChart3, badge: counts.total },
+          { id: 'nouveau', label: 'Saisir un Dossier', icon: FilePlus, highlight: true },
           { id: 'gestion_conseillers', label: 'Gestion des Conseillers', icon: UserRoundPlus },
           { id: 'attestations_entreprises', label: 'Attestations Entreprises', icon: Building2, badge: counts.valides, badgeColor: 'bg-emerald-600' },
-          { id: 'dashboard', label: 'Vue d\'Ensemble des Dossiers', icon: LayoutDashboard, badge: counts.total },
-          { id: 'excel', label: 'Exportation des Données', icon: FileSpreadsheet }
+          { id: 'valides', label: 'Dossiers Validés', icon: CheckCircle, badge: counts.valides },
+          { id: 'excel', label: 'Exportation des Données', icon: FileSpreadsheet },
+          { id: 'archives', label: 'Archives attestations', icon: Archive }
+          ,{ id: 'parametres', label: 'Paramètres', icon: Settings }
         ];
 
       case 'CONSEILLER':
@@ -45,7 +51,9 @@ export default function Sidebar({ activeTab, onTabChange, role, counts }) {
           { id: 'corrections', label: 'Corrections Demandées', icon: AlertCircle, badge: counts.corrections_demandees, badgeColor: 'bg-rose-500' },
           { id: 'valides', label: 'Attestations Disponibles', icon: CheckCircle, badge: counts.attestations_disponibles, badgeColor: 'bg-emerald-600' },
           { id: 'stats', label: 'Mes Statistiques', icon: BarChart3 },
-          { id: 'excel', label: 'Exportation Excel', icon: FileSpreadsheet }
+          { id: 'excel', label: 'Exportation Excel', icon: FileSpreadsheet },
+          { id: 'archives', label: 'Archives attestations', icon: Archive }
+          ,{ id: 'parametres', label: 'Paramètres', icon: Settings }
         ];
     }
   };
@@ -53,9 +61,9 @@ export default function Sidebar({ activeTab, onTabChange, role, counts }) {
   const navItems = getNavItems();
 
   return (
-    <aside className="w-64 bg-aej-dark border-r border-slate-700/80 h-[calc(100vh-5rem)] sticky top-20 flex-shrink-0 p-4 flex flex-col justify-between overflow-y-auto shadow-xl">
+    <aside className="w-64 bg-[#16323a] border-r border-[#244850] h-[calc(100vh-4.5rem)] sticky top-[4.5rem] flex-shrink-0 p-4 flex flex-col justify-between overflow-y-auto shadow-xl">
       <div className="space-y-1.5">
-        <div className="px-3 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-700/70 mb-3">
+        <div className="px-3 py-2 text-[10px] font-black text-[#b4c5bf] uppercase tracking-widest border-b border-[#31545a] mb-3">
           Navigation Principale
         </div>
 

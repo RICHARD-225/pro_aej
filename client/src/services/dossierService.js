@@ -1,8 +1,14 @@
-import { api } from './api';
+import { API_BASE_URL, api } from './api';
 import { getAccessToken } from './api';
 
 export async function getDossiers() {
-  return (await api('/dossiers')).data;
+  const firstPage = await api('/dossiers?page=1&pageSize=100');
+  const dossiers = [...firstPage.data];
+  for (let page = 2; page <= firstPage.totalPages; page += 1) {
+    const nextPage = await api(`/dossiers?page=${page}&pageSize=100`);
+    dossiers.push(...nextPage.data);
+  }
+  return dossiers;
 }
 
 export async function getDossierById(id) {
@@ -26,7 +32,7 @@ export async function resubmitDossier(id, dossier) {
 }
 
 export async function generateEnterpriseAttestation(entrepriseId) {
-  const response = await fetch('/api/attestations/entreprise', {
+  const response = await fetch(`${API_BASE_URL}/attestations/entreprise`, {
     method: 'POST',
     credentials: 'include',
     headers: {
@@ -43,7 +49,7 @@ export async function generateEnterpriseAttestation(entrepriseId) {
 }
 
 export async function generateDossierAttestation(dossierId) {
-  const response = await fetch(`/api/attestations/dossier/${encodeURIComponent(dossierId)}`, {
+  const response = await fetch(`${API_BASE_URL}/attestations/dossier/${encodeURIComponent(dossierId)}`, {
     method: 'POST',
     credentials: 'include',
     headers: {
@@ -59,7 +65,7 @@ export async function generateDossierAttestation(dossierId) {
 }
 
 export async function generateBulkAttestation(dossierIds) {
-  const response = await fetch('/api/attestations/lot', {
+  const response = await fetch(`${API_BASE_URL}/attestations/lot`, {
     method: 'POST',
     credentials: 'include',
     headers: {
@@ -73,4 +79,20 @@ export async function generateBulkAttestation(dossierIds) {
     throw new Error(payload.message || 'La génération du lot d’attestations a échoué.');
   }
   return response.blob();
+}
+
+export async function archiveEnterpriseAttestation(entrepriseId) {
+  const response = await fetch(`${API_BASE_URL}/attestations/entreprise/${encodeURIComponent(entrepriseId)}/archive`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { Authorization: `Bearer ${getAccessToken() || ''}` }
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.message || 'L’archivage de l’attestation a échoué.');
+  return payload;
+}
+
+export async function getAttestations(statut = '') {
+  const query = statut ? `?statut=${encodeURIComponent(statut)}` : '';
+  return (await api(`/attestations${query}`)).data;
 }

@@ -56,6 +56,7 @@ export default function CorrectionModal({ dossier, onClose, onResubmit, referent
   });
 
   const [errorMsg, setErrorMsg] = useState('');
+  const [correctedPoints, setCorrectedPoints] = useState(() => Object.fromEntries(verificationItemsLabels.map(({ key }) => [key, dossier.checklist?.[key] === true])));
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -66,8 +67,19 @@ export default function CorrectionModal({ dossier, onClose, onResubmit, referent
     setErrorMsg('');
   };
 
+  const handleCorrectionCheck = (key, checked) => {
+    setCorrectedPoints((previous) => ({ ...previous, [key]: checked }));
+    setErrorMsg('');
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    const pendingPoints = verificationItemsLabels.filter(({ key }) => dossier.checklist?.[key] !== true && !correctedPoints[key]);
+    if (pendingPoints.length) {
+      setErrorMsg(`Corrigez puis cochez tous les points concernés avant de resoumettre : ${pendingPoints.map(({ label }) => label).join(', ')}.`);
+      return;
+    }
 
     if (!formData.nom || !formData.prenoms || !formData.date_naissance || !formData.numero_piece_identite || !formData.contact_1) {
       setErrorMsg("Veuillez remplir le Nom, Prénoms, Date de Naissance, N° Pièce et Contact 1.");
@@ -148,6 +160,7 @@ export default function CorrectionModal({ dossier, onClose, onResubmit, referent
       service_affectation: formData.service_affectation.toUpperCase(),
       date_debut_stage: formData.date_debut_stage.trim(),
       date_fin_previsionnelle: formData.date_fin_previsionnelle.trim()
+      , correction_points: correctedPoints
     };
 
     onResubmit(dossier.id, payload);
@@ -216,9 +229,10 @@ export default function CorrectionModal({ dossier, onClose, onResubmit, referent
                       <Check className="w-3 h-3" /> OK
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-extrabold text-rose-700 bg-rose-200/80 px-1.5 py-0.5 rounded">
-                      <X className="w-3 h-3" /> À Corriger
-                    </span>
+                    <label className="inline-flex cursor-pointer items-center gap-1 text-[10px] font-extrabold text-rose-700 bg-rose-200/80 px-1.5 py-0.5 rounded">
+                      <input type="checkbox" checked={Boolean(correctedPoints[key])} onChange={(event) => handleCorrectionCheck(key, event.target.checked)} />
+                      {correctedPoints[key] ? <><Check className="w-3 h-3" /> Corrigé</> : <><X className="w-3 h-3" /> À corriger</>}
+                    </label>
                   )}
                 </div>
               );
