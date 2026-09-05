@@ -1,0 +1,521 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Role {
+  CONSEILLER
+  SERVICE_INFO
+  DIRECTION
+}
+
+enum Sexe {
+  HOMME
+  FEMME
+}
+
+enum TypePaiement {
+  TRESOR_MONEY
+  WAVE
+  ORANGE_MONEY
+  MTN_MOMO
+  MOOV_MONEY
+  AUTRE
+}
+
+enum TypeEntreprise {
+  PRIVE
+  PUBLIC_NON_EPN
+  EPN
+}
+
+enum StatutWorkflow {
+  BROUILLON
+  SOUMIS
+  EN_VERIFICATION
+  CORRECTION_DEMANDEE
+  RESOUMIS
+  VALIDE
+  ATTESTATION_GENEREE
+  REJETE
+  ARCHIVE
+}
+
+enum StatutCorrection {
+  EN_ATTENTE
+  CORRIGEE
+  ANNULEE
+}
+
+enum TypeAttestation {
+  ENTREPRISE
+  FIN_STAGE
+}
+
+enum StatutAttestation {
+  GENEREE
+  ANNULEE
+}
+
+// ============================================================
+// 1. AGENCES
+// ============================================================
+
+model Agence {
+  id               String @id @db.VarChar(36)
+  nom              String @unique @db.VarChar(150)
+  ville            String @db.VarChar(150)
+  directeurNom     String @map("directeur_nom") @db.VarChar(100)
+  directeurPrenoms String @map("directeur_prenoms") @db.VarChar(150)
+  directeurTitre   String @map("directeur_titre") @db.VarChar(150)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users        User[]
+  dossiers     DossierImmersion[]
+  attestations Attestation[]
+  sessionLogs UserSessionLog[]
+
+  @@map("agences")
+}
+
+// ============================================================
+// 2. UTILISATEURS
+// ============================================================
+
+model User {
+  id             String @id @db.VarChar(36)
+  agenceId       String @map("agence_id") @db.VarChar(36)
+  email          String @unique @db.VarChar(191)
+  motDePasseHash String @map("mot_de_passe_hash") @db.VarChar(255)
+
+  nom     String @db.VarChar(100)
+  prenoms String @db.VarChar(150)
+
+  role Role
+
+  titre  String? @db.VarChar(150)
+  avatar String? @db.VarChar(255)
+
+  actif Boolean @default(true)
+
+  sessionVersion Int @default(0) @map("session_version")
+
+  passwordChangeRequired Boolean @default(false) @map("password_change_required")
+
+  lastLoginAt DateTime? @map("last_login_at")
+  loginCount  Int @default(0) @map("login_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  agence Agence @relation(fields: [agenceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  dossiersConseiller DossierImmersion[] @relation("ConseillerDossier")
+  dossiersValides    DossierImmersion[] @relation("ValidateurDossier")
+
+  verificationItems VerificationItem[]
+  correctionsDemandees Correction[]
+  attestationsGenerees Attestation[]
+  historiquesAudit HistoriqueAudit[]
+  sessionLogs UserSessionLog[]
+
+  @@index([agenceId])
+  @@index([role])
+
+  @@map("users")
+}
+
+model UserSessionLog {
+  id String @id @db.VarChar(36)
+
+  userId String @map("user_id") @db.VarChar(36)
+  agenceId String @map("agence_id") @db.VarChar(36)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  agence Agence @relation(fields: [agenceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([agenceId, createdAt])
+
+  @@map("user_session_logs")
+}
+
+// ============================================================
+// 3. CANDIDATS
+// ============================================================
+
+model Candidat {
+  id String @id @db.VarChar(36)
+
+  nom     String @db.VarChar(100)
+  prenoms String @db.VarChar(150)
+
+  sexe Sexe
+
+  dateNaissance DateTime @map("date_naissance") @db.Date
+
+  lieuNaissance String @map("lieu_naissance") @db.VarChar(150)
+
+  sousPrefectureNaissance String @map("sous_prefecture_naissance") @db.VarChar(150)
+
+  handicap Boolean @default(false)
+
+  autreTypeHandicap String? @map("autre_type_handicap") @db.VarChar(150)
+
+  naturePieceIdentite String @map("nature_piece_identite") @db.VarChar(100)
+
+  numeroPieceIdentite String @unique @map("numero_piece_identite") @db.VarChar(50)
+
+  contact1 String @map("contact_1") @db.VarChar(30)
+
+  contact2 String? @map("contact_2") @db.VarChar(30)
+
+  niveauEtude String @map("niveau_etude") @db.VarChar(100)
+
+  etablissementFrequente String @map("etablissement_frequente") @db.VarChar(200)
+
+  typeEnseignement String @map("type_enseignement") @db.VarChar(150)
+
+  sousPrefectureResidence String @map("sous_prefecture_residence") @db.VarChar(150)
+
+  localiteResidence String @map("localite_residence") @db.VarChar(150)
+
+  typePaiement TypePaiement @default(TRESOR_MONEY) @map("type_paiement")
+
+  numeroPaiement String @map("numero_paiement") @db.VarChar(30)
+
+  actif Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  dossiers DossierImmersion[]
+  tuteurs  CandidatTuteur[]
+
+  @@index([nom, prenoms])
+  @@index([contact1])
+  @@index([numeroPaiement])
+
+  @@map("candidats")
+}
+
+// ============================================================
+// 4. TUTEURS
+// ============================================================
+
+model Tuteur {
+  id String @id @db.VarChar(36)
+
+  nomPrenoms String @map("nom_prenoms") @db.VarChar(200)
+
+  contact String? @db.VarChar(30)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  candidats CandidatTuteur[]
+
+  @@index([nomPrenoms])
+  @@index([contact])
+
+  @@map("tuteurs")
+}
+
+// ============================================================
+// 5. RELATION CANDIDAT / TUTEUR
+// ============================================================
+
+model CandidatTuteur {
+  candidatId String @map("candidat_id") @db.VarChar(36)
+  tuteurId   String @map("tuteur_id") @db.VarChar(36)
+
+  lienParente String @map("lien_parente") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  candidat Candidat @relation(fields: [candidatId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  tuteur Tuteur @relation(fields: [tuteurId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@id([candidatId, tuteurId])
+
+  @@map("candidat_tuteur")
+}
+
+// ============================================================
+// 6. ENTREPRISES
+// ============================================================
+
+model Entreprise {
+  id String @id @db.VarChar(36)
+
+  raisonSociale String @map("raison_sociale") @db.VarChar(200)
+
+  typeEntreprise TypeEntreprise @default(PRIVE) @map("type_entreprise")
+
+  brancheActivite String @map("branche_activite") @db.VarChar(150)
+
+  contact1 String @map("contact_1") @db.VarChar(30)
+
+  contact2 String? @map("contact_2") @db.VarChar(30)
+
+  sousPrefecture String @map("sous_prefecture") @db.VarChar(150)
+
+  localite String @db.VarChar(150)
+
+  actif Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  dossiers     DossierImmersion[]
+  attestations Attestation[]
+
+  @@index([raisonSociale])
+  @@index([localite])
+
+  @@map("entreprises")
+}
+
+// ============================================================
+// 7. DOSSIERS D'IMMERSION
+// ============================================================
+
+model DossierImmersion {
+  id String @id @db.VarChar(50)
+
+  numeroOrdreExcel Int? @map("numero_ordre_excel")
+
+  dateSaisie DateTime @map("date_saisie") @db.Date
+
+  agenceId     String @map("agence_id") @db.VarChar(36)
+  candidatId   String @map("candidat_id") @db.VarChar(36)
+  entrepriseId String @map("entreprise_id") @db.VarChar(36)
+  conseillerId String @map("conseiller_id") @db.VarChar(36)
+
+  serviceAffectation String @map("service_affectation") @db.VarChar(150)
+
+  dateDebutStage DateTime @map("date_debut_stage") @db.Date
+
+  dateFinPrevisionnelle DateTime @map("date_fin_previsionnelle") @db.Date
+
+  departementAdministratifStage String @map("departement_administratif_stage") @db.VarChar(150)
+
+  sousPrefectureLieuStage String @map("sous_prefecture_lieu_stage") @db.VarChar(150)
+
+  localiteLieuStage String @map("localite_lieu_stage") @db.VarChar(150)
+
+  statutWorkflow StatutWorkflow @default(BROUILLON) @map("statut_workflow")
+
+  dateValidation DateTime? @map("date_validation")
+
+  valideParId String? @map("valide_par_id") @db.VarChar(36)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  agence Agence @relation(fields: [agenceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  candidat Candidat @relation(fields: [candidatId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  entreprise Entreprise @relation(fields: [entrepriseId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  conseiller User @relation("ConseillerDossier", fields: [conseillerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  validePar User? @relation("ValidateurDossier", fields: [valideParId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  verificationItems VerificationItem[]
+  corrections      Correction[]
+  attestations     Attestation[]
+  historiquesAudit HistoriqueAudit[]
+
+  @@index([agenceId])
+  @@index([candidatId])
+  @@index([entrepriseId])
+  @@index([conseillerId])
+  @@index([statutWorkflow])
+  @@index([dateDebutStage, dateFinPrevisionnelle])
+  @@unique([agenceId, numeroOrdreExcel])
+
+  @@map("dossiers_immersion")
+}
+
+// ============================================================
+// 8. TYPES DE VERIFICATION
+// ============================================================
+
+model TypeVerification {
+  id Int @id @default(autoincrement())
+
+  libelle String @unique @db.VarChar(200)
+
+  description String? @db.Text
+
+  ordreAffichage Int @unique @map("ordre_affichage")
+
+  obligatoire Boolean @default(true)
+
+  actif Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  verificationItems VerificationItem[]
+
+  @@map("types_verification")
+}
+
+// ============================================================
+// 9. ELEMENTS DE VERIFICATION
+// ============================================================
+
+model VerificationItem {
+  id String @id @db.VarChar(36)
+
+  dossierId String @map("dossier_id") @db.VarChar(50)
+
+  typeVerificationId Int @map("type_verification_id")
+
+  conforme Boolean @default(false)
+
+  observation String? @db.Text
+
+  verifieParId String? @map("verifie_par_id") @db.VarChar(36)
+
+  dateVerification DateTime? @map("date_verification")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  dossier DossierImmersion @relation(fields: [dossierId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  typeVerification TypeVerification @relation(fields: [typeVerificationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  verifiePar User? @relation(fields: [verifieParId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([dossierId, typeVerificationId])
+
+  @@index([dossierId])
+
+  @@map("verification_items")
+}
+
+// ============================================================
+// 10. CORRECTIONS
+// ============================================================
+
+model Correction {
+  id String @id @db.VarChar(36)
+
+  dossierId String @map("dossier_id") @db.VarChar(50)
+
+  demandeParId String @map("demande_par_id") @db.VarChar(36)
+
+  motif String @db.Text
+
+  statut StatutCorrection @default(EN_ATTENTE)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  corrigeeAt DateTime? @map("corrigee_at")
+
+  dossier DossierImmersion @relation(fields: [dossierId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  demandePar User @relation(fields: [demandeParId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([dossierId])
+  @@index([statut])
+
+  @@map("corrections")
+}
+
+// ============================================================
+// 11. ATTESTATIONS
+// ============================================================
+
+model Attestation {
+  id String @id @db.VarChar(36)
+
+  typeAttestation TypeAttestation @map("type_attestation")
+
+  numeroAttestation String @unique @map("numero_attestation") @db.VarChar(100)
+
+  dossierId String? @map("dossier_id") @db.VarChar(50)
+
+  entrepriseId String? @map("entreprise_id") @db.VarChar(36)
+
+  agenceId String @map("agence_id") @db.VarChar(36)
+
+  periodeDebut DateTime? @map("periode_debut") @db.Date
+
+  periodeFin DateTime? @map("periode_fin") @db.Date
+
+  genereeParId String @map("generee_par_id") @db.VarChar(36)
+
+  dateGeneration DateTime @default(now()) @map("date_generation")
+
+  cheminFichier String? @map("chemin_fichier") @db.VarChar(500)
+
+  statut StatutAttestation @default(GENEREE)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  dossier DossierImmersion? @relation(fields: [dossierId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  entreprise Entreprise? @relation(fields: [entrepriseId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  agence Agence @relation(fields: [agenceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  genereePar User @relation(fields: [genereeParId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([dossierId])
+  @@index([entrepriseId])
+  @@index([typeAttestation])
+
+  @@map("attestations")
+}
+
+// ============================================================
+// 12. HISTORIQUE ET AUDIT
+// ============================================================
+
+model HistoriqueAudit {
+  id BigInt @id @default(autoincrement())
+
+  dossierId String @map("dossier_id") @db.VarChar(50)
+
+  auteurId String @map("auteur_id") @db.VarChar(36)
+
+  action String @db.VarChar(100)
+
+  description String? @db.Text
+
+  ancienStatut String? @map("ancien_statut") @db.VarChar(50)
+
+  nouveauStatut String? @map("nouveau_statut") @db.VarChar(50)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  dossier DossierImmersion @relation(fields: [dossierId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  auteur User @relation(fields: [auteurId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([dossierId])
+  @@index([auteurId])
+  @@index([createdAt])
+
+  @@map("historiques_audit")
+}

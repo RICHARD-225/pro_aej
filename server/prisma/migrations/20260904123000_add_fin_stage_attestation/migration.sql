@@ -1,0 +1,2 @@
+ALTER TABLE attestations
+  MODIFY COLUMN type_attestation ENUM('ENTREPRISE', 'FIN_STAGE') NOT NULL;

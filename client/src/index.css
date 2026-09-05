@@ -1,0 +1,276 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary-orange: #E05A10;
+    --primary-green: #008751;
+    --dark-bg: #0F172A;
+    --aej-orange: #E05A10;
+    --aej-green: #008751;
+    --aej-green-dark: #00663D;
+    --aej-ink: #16323A;
+    --aej-surface: #F4F6F8;
+  }
+  
+  body {
+    background-color: var(--aej-surface);
+    color: var(--aej-ink);
+    font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Custom Glassmorphism Effect */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+/* Fond animé de connexion : grille et lignes lentes pour donner de la profondeur sans distraire. */
+.login-shell {
+  background: #f4f6f8;
+  isolation: isolate;
+}
+
+.login-grid {
+  opacity: 0.8;
+  background-image: linear-gradient(rgba(15, 23, 42, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
+  background-size: 48px 48px;
+  transform: perspective(700px) rotateX(58deg) scale(1.8) translateY(20%);
+  transform-origin: center bottom;
+  animation: login-grid-drift 18s linear infinite;
+}
+
+.login-grid::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(244, 246, 248, 0.05), #f4f6f8 82%);
+}
+
+.login-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(115deg, transparent 0 110px, rgba(255, 255, 255, 0.34) 111px, transparent 112px 220px);
+  opacity: 0.4;
+  animation: login-lines-drift 24s linear infinite;
+}
+
+.login-card {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.1);
+}
+
+.login-card::before {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #e05a10 0 33%, #ffffff 33% 66%, #008751 66% 100%);
+}
+
+.login-card::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(0, 135, 81, 0.08);
+  border-radius: 13px;
+  pointer-events: none;
+}
+
+.login-brand {
+  padding-top: 0.35rem;
+}
+
+.login-scan {
+  left: -10%;
+  width: 120%;
+  height: 1px;
+  opacity: 0.5;
+  background: linear-gradient(90deg, transparent, rgba(224, 90, 16, 0.35), transparent);
+  transform: rotate(-18deg);
+  animation: login-scan-move 11s ease-in-out infinite;
+}
+
+.login-scan-one { top: 22%; }
+.login-scan-two { top: 74%; animation-delay: -5s; background: linear-gradient(90deg, transparent, rgba(0, 135, 81, 0.3), transparent); }
+
+.login-accent {
+  width: 42vw;
+  height: 42vw;
+  max-width: 620px;
+  max-height: 620px;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.19;
+  pointer-events: none;
+  animation: login-accent-breathe 9s ease-in-out infinite alternate;
+}
+
+.login-accent-orange { top: -18%; left: -12%; background: #f97316; }
+.login-accent-green { right: -15%; bottom: -20%; background: #10b981; animation-delay: -4s; }
+
+.login-horizon {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 135, 81, 0.4) 25%, rgba(224, 90, 16, 0.45) 75%, transparent);
+  opacity: 0.82;
+  animation: login-horizon-pulse 7s ease-in-out infinite;
+}
+
+.login-beam {
+  width: 70vw;
+  height: 2px;
+  opacity: 0.5;
+  transform: rotate(-28deg);
+  transform-origin: left center;
+  animation: login-beam-sweep 14s ease-in-out infinite;
+}
+
+.login-beam-orange { top: 15%; left: -8%; background: linear-gradient(90deg, transparent, rgba(224, 90, 16, 0.7), transparent); }
+.login-beam-green { top: 82%; left: 40%; background: linear-gradient(90deg, transparent, rgba(0, 135, 81, 0.65), transparent); animation-delay: -7s; }
+
+.login-particles {
+  top: 38%;
+  width: 16%;
+  height: 22%;
+  pointer-events: none;
+}
+
+.login-particles-orange { left: 7%; }
+.login-particles-green { right: 7%; }
+
+.login-particles i {
+  position: absolute;
+  display: block;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  animation: login-particle-float 8s ease-in-out infinite;
+}
+
+.login-particles-orange i { background: #e05a10; box-shadow: 0 0 9px rgba(224, 90, 16, 0.75); }
+.login-particles-green i { background: #008751; box-shadow: 0 0 9px rgba(0, 135, 81, 0.7); }
+.login-particles i:nth-child(1) { top: 34%; left: 22%; }
+.login-particles i:nth-child(2) { top: 48%; left: 48%; width: 2px; height: 2px; }
+.login-particles i:nth-child(3) { top: 58%; left: 68%; }
+.login-particles i:nth-child(4) { top: 66%; left: 34%; width: 2px; height: 2px; }
+.login-particles i:nth-child(5) { top: 40%; left: 78%; }
+.login-particles i:nth-child(6) { top: 30%; left: 56%; width: 2px; height: 2px; }
+.login-particles i:nth-child(7) { top: 52%; left: 12%; width: 2px; height: 2px; }
+.login-particles i:nth-child(8) { top: 72%; left: 58%; }
+.login-particles i:nth-child(9) { top: 24%; left: 38%; width: 2px; height: 2px; }
+.login-particles i:nth-child(10) { top: 78%; left: 84%; width: 2px; height: 2px; }
+.login-particles i:nth-child(11) { top: 46%; left: 88%; }
+.login-particles i:nth-child(12) { top: 62%; left: 4%; width: 2px; height: 2px; }
+
+@keyframes login-grid-drift {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 0 48px, 48px 0; }
+}
+
+@keyframes login-scan-move {
+  0%, 100% { transform: translateX(-16%) rotate(-18deg); opacity: 0; }
+  25%, 75% { opacity: 0.5; }
+  50% { transform: translateX(16%) rotate(-18deg); }
+}
+
+@keyframes login-accent-breathe {
+  from { transform: scale(0.92); opacity: 0.1; }
+  to { transform: scale(1.08); opacity: 0.11; }
+}
+
+@keyframes login-lines-drift {
+  from { transform: translateX(-80px); }
+  to { transform: translateX(80px); }
+}
+
+@keyframes login-horizon-pulse {
+  0%, 100% { opacity: 0.25; transform: scaleX(0.7); }
+  50% { opacity: 0.7; transform: scaleX(1); }
+}
+
+@keyframes login-beam-sweep {
+  0%, 100% { transform: translateX(-12%) rotate(-28deg); opacity: 0; }
+  20%, 70% { opacity: 0.5; }
+  50% { transform: translateX(18%) rotate(-28deg); }
+}
+
+@keyframes login-particle-float {
+  0%, 100% { transform: translate(0, 8px); opacity: 0.25; }
+  50% { transform: translate(10px, -12px); opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-grid, .login-scan, .login-accent, .login-shell::after, .login-horizon, .login-beam, .login-particles i { animation: none; }
+}
+
+/* FORMATAGE D'IMPRESSION STRICT A4 SUR 1 SEULE FEUILLE */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 6mm 12mm;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 10.5pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  header, sidebar, aside, button, nav, .no-print {
+    display: none !important;
+  }
+
+  #printable-attestation {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  #printable-attestation table {
+    page-break-inside: avoid !important;
+  }
+}
