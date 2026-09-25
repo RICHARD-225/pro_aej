@@ -45,16 +45,9 @@ export default function PageAttestationEntreprise({ dossiers, onGenerateAttestat
       {/* Header Page Officiel AEJ */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-aej-green text-white p-6 rounded-2xl border border-slate-800 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-extrabold text-[10px] uppercase tracking-wider border border-emerald-500/30">
-              Rubrique Officielle AEJ
-            </span>
-            <span className="text-xs text-slate-300 font-mono">BOUAKÉ</span>
-          </div>
-          <h2 className="text-xl font-extrabold text-white mt-1">Attestations de Démarrage Groupées par Entreprise</h2>
-          <p className="text-xs text-slate-200 max-w-xl mt-0.5">
-            Génération et impression des attestations officielles pour les structures accueillant des stagiaires validés.
-          </p>
+          
+          <h1 className="text-xl font-extrabold text-white mt-1">Attestations de Démarrage Groupées par Entreprise</h1>
+          
         </div>
 
         <div className="bg-slate-800/80 px-5 py-3 rounded-2xl border border-slate-700 text-right shadow-inner">
@@ -63,13 +56,7 @@ export default function PageAttestationEntreprise({ dossiers, onGenerateAttestat
         </div>
       </div>
 
-      {/* RÈGLE MÉTIER BANNER */}
-      <div className="bg-blue-50/80 p-4 rounded-2xl border border-blue-200 flex items-start gap-3 shadow-sm">
-        <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-        <div className="text-xs text-blue-900 leading-relaxed">
-          <strong className="font-extrabold">Règle de Génération par Lot :</strong> Seuls les stagiaires au statut <span className="font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">VALIDÉ</span> (après contrôle physico-numérique 9/9 points) sont automatiquement intégrés sur l'attestation groupée de l'entreprise.
-        </div>
-      </div>
+    
 
       <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_220px]">
         <label className="relative"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher une entreprise ou un secteur" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-xs font-semibold outline-none focus:border-aej-orange" /></label>

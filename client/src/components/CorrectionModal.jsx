@@ -60,11 +60,78 @@ export default function CorrectionModal({ dossier, onClose, onResubmit, referent
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    // Protection : ignorer les modifications sur les champs verrouillés
+    if (!isFieldEditable(name)) return;
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
     setErrorMsg('');
+  };
+
+  // Seuls les champs dont le point de contrôle a été rejeté (non validé) par le Service Info sont modifiables
+  const isFieldEditable = (fieldName) => {
+    if (!dossier?.checklist) return true;
+
+    switch (fieldName) {
+      case 'nom':
+      case 'prenoms':
+      case 'date_naissance':
+      case 'sexe':
+      case 'lieu_naissance':
+      case 'sous_prefecture_naissance':
+      case 'handicap':
+      case 'autre_type_handicap':
+        return dossier.checklist.identite_conforme !== true;
+
+      case 'contact_1':
+      case 'contact_2':
+        return dossier.checklist.telephone_conforme !== true;
+
+      case 'nature_piece_identite':
+      case 'numero_piece_identite':
+        return dossier.checklist.piece_identite_conforme !== true;
+
+      case 'niveau_etude':
+      case 'etablissement_frequente':
+      case 'type_enseignement':
+        return dossier.checklist.convention_conforme !== true;
+
+      case 'numero_paiement':
+        return dossier.checklist.telephone_conforme !== true || dossier.checklist.identite_conforme !== true;
+
+      case 'entreprise_nom':
+      case 'entreprise_branche':
+      case 'entreprise_type':
+      case 'entreprise_contact_1':
+      case 'entreprise_contact_2':
+      case 'sous_prefecture_lieu_stage':
+      case 'localite_lieu_stage':
+        return dossier.checklist.entreprise_conforme !== true;
+
+      case 'service_affectation':
+        return dossier.checklist.poste_conforme !== true;
+
+      case 'date_debut_stage':
+      case 'date_fin_previsionnelle':
+        return dossier.checklist.dates_conformes !== true;
+
+      case 'nom_prenoms_tuteur':
+      case 'lien_parente_tuteur':
+      case 'contact_tuteur':
+        return dossier.checklist.signature_conforme !== true;
+
+      default:
+        return true;
+    }
+  };
+
+  const getCorrectionFieldClass = (fieldName) => {
+    const editable = isFieldEditable(fieldName);
+    if (!editable) {
+      return 'w-full px-3 py-2 bg-slate-100/90 border border-slate-200 rounded-xl font-bold text-slate-400 cursor-not-allowed select-none transition-all';
+    }
+    return 'w-full px-3 py-2 bg-white border-2 border-amber-400 rounded-xl font-bold text-slate-900 focus:ring-2 focus:ring-aej-orange/40 outline-none shadow-sm transition-all';
   };
 
   const handleCorrectionCheck = (key, checked) => {
@@ -251,75 +318,200 @@ export default function CorrectionModal({ dossier, onClose, onResubmit, referent
 
           {/* Section 1: Candidat */}
           <div className="space-y-3">
-            <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1">
-              1. Identité du Bénéficiaire
-            </h4>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700">
+                1. Identité du Bénéficiaire & Contacts
+              </h4>
+              <span className="text-[10px] text-slate-400">
+                Les champs validés sont automatiquement grisés
+              </span>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Nom *</label>
+                <label className="flex items-center justify-between font-bold text-slate-700 mb-1">
+                  <span>Nom *</span>
+                  {!isFieldEditable('nom') ? (
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      ✓ Validé
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      À corriger
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
                   name="nom"
+                  disabled={!isFieldEditable('nom')}
                   value={formData.nom}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold uppercase focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={getCorrectionFieldClass('nom')}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Prénom(s) *</label>
+                <label className="flex items-center justify-between font-bold text-slate-700 mb-1">
+                  <span>Prénom(s) *</span>
+                  {!isFieldEditable('prenoms') ? (
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      ✓ Validé
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      À corriger
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
                   name="prenoms"
+                  disabled={!isFieldEditable('prenoms')}
                   value={formData.prenoms}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold uppercase focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={getCorrectionFieldClass('prenoms')}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Date de Naissance (JJ/MM/AAAA) *</label>
+                <label className="flex items-center justify-between font-bold text-slate-700 mb-1">
+                  <span>Date de Naissance (JJ/MM/AAAA) *</span>
+                  {!isFieldEditable('date_naissance') ? (
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      ✓ Validé
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      À corriger
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
                   name="date_naissance"
+                  disabled={!isFieldEditable('date_naissance')}
                   value={formData.date_naissance}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={getCorrectionFieldClass('date_naissance')}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">N° Pièce d'Identité *</label>
+                <label className="flex items-center justify-between font-bold text-slate-700 mb-1">
+                  <span>N° Pièce d'Identité *</span>
+                  {!isFieldEditable('numero_piece_identite') ? (
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      ✓ Validé
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      À corriger
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
                   name="numero_piece_identite"
+                  disabled={!isFieldEditable('numero_piece_identite')}
                   value={formData.numero_piece_identite}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold uppercase focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={getCorrectionFieldClass('numero_piece_identite')}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Contact 1 (10 Chiffres) *</label>
+                <label className="flex items-center justify-between font-bold text-slate-700 mb-1">
+                  <span>Contact 1 (10 Chiffres) *</span>
+                  {!isFieldEditable('contact_1') ? (
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      ✓ Validé
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      À corriger
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
                   name="contact_1"
                   maxLength={10}
+                  disabled={!isFieldEditable('contact_1')}
                   value={formData.contact_1}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={getCorrectionFieldClass('contact_1')}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">N° Paiement (10 Chiffres) *</label>
+                <label className="flex items-center justify-between font-bold text-slate-700 mb-1">
+                  <span>Contact 2 (Optionnel)</span>
+                  {!isFieldEditable('contact_2') ? (
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      ✓ Validé
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      À corriger
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  name="contact_2"
+                  maxLength={10}
+                  disabled={!isFieldEditable('contact_2')}
+                  value={formData.contact_2}
+                  onChange={handleChange}
+                  className={getCorrectionFieldClass('contact_2')}
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center justify-between font-bold text-slate-700 mb-1">
+                  <span>N° Paiement (10 Chiffres) *</span>
+                  {!isFieldEditable('numero_paiement') ? (
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      ✓ Validé
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      À corriger
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
                   name="numero_paiement"
                   maxLength={10}
+                  disabled={!isFieldEditable('numero_paiement')}
                   value={formData.numero_paiement}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={getCorrectionFieldClass('numero_paiement')}
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center justify-between font-bold text-slate-700 mb-1">
+                  <span>Établissement Fréquenté</span>
+                  {!isFieldEditable('etablissement_frequente') ? (
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      ✓ Validé
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      À corriger
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  name="etablissement_frequente"
+                  disabled={!isFieldEditable('etablissement_frequente')}
+                  value={formData.etablissement_frequente}
+                  onChange={handleChange}
+                  className={getCorrectionFieldClass('etablissement_frequente')}
                 />
               </div>
             </div>
@@ -327,51 +519,206 @@ export default function CorrectionModal({ dossier, onClose, onResubmit, referent
 
           {/* Section 2: Entreprise */}
           <div className="space-y-3 pt-2">
-            <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1">
-              2. Entreprise & Stage d'Immersion
-            </h4>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700">
+                2. Entreprise d'Accueil & Immersion
+              </h4>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Entreprise *</label>
+                <label className="flex items-center justify-between font-bold text-slate-700 mb-1">
+                  <span>Nom de l'Entreprise *</span>
+                  {!isFieldEditable('entreprise_nom') ? (
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      ✓ Validé
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      À corriger
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
                   name="entreprise_nom"
+                  disabled={!isFieldEditable('entreprise_nom')}
                   value={formData.entreprise_nom}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold uppercase focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={getCorrectionFieldClass('entreprise_nom')}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Service d'Affectation *</label>
+                <label className="flex items-center justify-between font-bold text-slate-700 mb-1">
+                  <span>Service d'Affectation *</span>
+                  {!isFieldEditable('service_affectation') ? (
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      ✓ Validé
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      À corriger
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
                   name="service_affectation"
+                  disabled={!isFieldEditable('service_affectation')}
                   value={formData.service_affectation}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold uppercase focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={getCorrectionFieldClass('service_affectation')}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Date de Début (JJ/MM/AAAA) *</label>
+                <label className="flex items-center justify-between font-bold text-slate-700 mb-1">
+                  <span>Contact Entreprise 1 *</span>
+                  {!isFieldEditable('entreprise_contact_1') ? (
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      ✓ Validé
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      À corriger
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  name="entreprise_contact_1"
+                  maxLength={10}
+                  disabled={!isFieldEditable('entreprise_contact_1')}
+                  value={formData.entreprise_contact_1}
+                  onChange={handleChange}
+                  className={getCorrectionFieldClass('entreprise_contact_1')}
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center justify-between font-bold text-slate-700 mb-1">
+                  <span>Contact Entreprise 2 (Optionnel)</span>
+                  {!isFieldEditable('entreprise_contact_2') ? (
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      ✓ Validé
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      À corriger
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  name="entreprise_contact_2"
+                  maxLength={10}
+                  disabled={!isFieldEditable('entreprise_contact_2')}
+                  value={formData.entreprise_contact_2}
+                  onChange={handleChange}
+                  className={getCorrectionFieldClass('entreprise_contact_2')}
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center justify-between font-bold text-slate-700 mb-1">
+                  <span>Date de Début (JJ/MM/AAAA) *</span>
+                  {!isFieldEditable('date_debut_stage') ? (
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      ✓ Validé
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      À corriger
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
                   name="date_debut_stage"
+                  disabled={!isFieldEditable('date_debut_stage')}
                   value={formData.date_debut_stage}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={getCorrectionFieldClass('date_debut_stage')}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Date de Fin Prévisionnelle *</label>
+                <label className="flex items-center justify-between font-bold text-slate-700 mb-1">
+                  <span>Date de Fin Prévisionnelle *</span>
+                  {!isFieldEditable('date_fin_previsionnelle') ? (
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      ✓ Validé
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      À corriger
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
                   name="date_fin_previsionnelle"
+                  disabled={!isFieldEditable('date_fin_previsionnelle')}
                   value={formData.date_fin_previsionnelle}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={getCorrectionFieldClass('date_fin_previsionnelle')}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Tuteur */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700">
+                3. Tuteur Légal & Contact d'Urgence
+              </h4>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label className="flex items-center justify-between font-bold text-slate-700 mb-1">
+                  <span>Nom et Prénom(s) du Tuteur</span>
+                  {!isFieldEditable('nom_prenoms_tuteur') ? (
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      ✓ Validé
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      À corriger
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  name="nom_prenoms_tuteur"
+                  disabled={!isFieldEditable('nom_prenoms_tuteur')}
+                  value={formData.nom_prenoms_tuteur}
+                  onChange={handleChange}
+                  className={getCorrectionFieldClass('nom_prenoms_tuteur')}
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center justify-between font-bold text-slate-700 mb-1">
+                  <span>Contact du Tuteur</span>
+                  {!isFieldEditable('contact_tuteur') ? (
+                    <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      ✓ Validé
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      À corriger
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  name="contact_tuteur"
+                  maxLength={10}
+                  disabled={!isFieldEditable('contact_tuteur')}
+                  value={formData.contact_tuteur}
+                  onChange={handleChange}
+                  className={getCorrectionFieldClass('contact_tuteur')}
                 />
               </div>
             </div>

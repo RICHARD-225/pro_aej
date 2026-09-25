@@ -49,7 +49,9 @@ export function toPublicUser(user) {
 }
 
 function getCookieValue(header, name) {
-  return header?.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1) || null;
+  const raw = header?.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1) || null;
+  if (!raw) return null;
+  try { return decodeURIComponent(raw); } catch { return raw; }
 }
 
 export async function requireAuth(req, res, next) {

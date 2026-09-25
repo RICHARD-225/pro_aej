@@ -28,7 +28,7 @@ export default function Sidebar({ activeTab, onTabChange, role, counts }) {
           { id: 'excel', label: 'Import / Export Excel', icon: FileSpreadsheet },
           { id: 'archives', label: 'Archives attestations', icon: Archive }
           ,{ id: 'parametres', label: 'Paramètres', icon: Settings }
-        ];
+        ]; 
 
       case 'DIRECTION':
         return [
@@ -48,8 +48,8 @@ export default function Sidebar({ activeTab, onTabChange, role, counts }) {
           { id: 'dashboard', label: 'Mon Tableau de Bord', icon: LayoutDashboard, badge: counts.total },
           { id: 'nouveau', label: 'Saisir un Nouveau Dossier', icon: FilePlus, highlight: true },
           { id: 'attestations_entreprises', label: 'Attestations Entreprises', icon: Building2, badge: counts.valides, badgeColor: 'bg-emerald-600' },
-          { id: 'corrections', label: 'Corrections Demandées', icon: AlertCircle, badge: counts.corrections_demandees, badgeColor: 'bg-rose-500' },
-          { id: 'valides', label: 'Attestations Disponibles', icon: CheckCircle, badge: counts.attestations_disponibles, badgeColor: 'bg-emerald-600' },
+          // { id: 'corrections', label: 'Corrections Demandées', icon: AlertCircle, badge: counts.corrections_demandees, badgeColor: 'bg-rose-500' },
+          { id: 'valides', label: 'Attestations De Fin', icon: CheckCircle, badge: counts.attestations_disponibles, badgeColor: 'bg-emerald-600' },
           { id: 'stats', label: 'Mes Statistiques', icon: BarChart3 },
           { id: 'excel', label: 'Exportation Excel', icon: FileSpreadsheet },
           { id: 'archives', label: 'Archives attestations', icon: Archive }

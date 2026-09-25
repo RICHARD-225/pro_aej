@@ -76,27 +76,35 @@ export default function LoginPage({ onLoginSuccess }) {
     }
   };
 
-  // Étape 2 : Vérification du code OTP 6 chiffres
-  const handleOtpSubmit = async (event) => {
-    event.preventDefault();
-    const cleanOtp = otpCode.trim();
+  // Étape 2 : Vérification automatique ou manuelle du code OTP 6 chiffres
+  const handleVerifyOtp = async (cleanOtp) => {
+    const codeToVerify = String(cleanOtp || otpCode || '').trim();
 
-    if (cleanOtp.length !== 6) {
+    if (codeToVerify.length !== 6) {
       setError('Veuillez saisir le code complet à 6 chiffres.');
       return;
     }
+
+    if (loading) return;
 
     setLoading(true);
     setError('');
     setInfoMsg('');
 
     try {
-      await verifyOtpLogin(email, cleanOtp);
+      await verifyOtpLogin(email, codeToVerify);
+      // Isolation de session sécurisée : cet onglet/cette fenêtre est validé(e)
+      window.sessionStorage.setItem('aej_tab_authenticated', 'true');
       await onLoginSuccess();
     } catch (err) {
       setError(err.message || 'Code de vérification incorrect ou expiré.');
       setLoading(false);
     }
+  };
+
+  const handleOtpSubmit = async (event) => {
+    if (event) event.preventDefault();
+    await handleVerifyOtp();
   };
 
   // Renvoi d'un nouveau code
@@ -164,7 +172,7 @@ export default function LoginPage({ onLoginSuccess }) {
                 <h1 className="text-2xl font-black text-slate-900 tracking-tight">AEJ Bouaké</h1>
               </div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Système Intégré des Immersions
+                {/* Système Intégré des Immersions */}
               </p>
             </div>
 
@@ -178,7 +186,7 @@ export default function LoginPage({ onLoginSuccess }) {
             {/* Champ Email */}
             <div className="space-y-1.5">
               <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wide">
-                Adresse e-mail professionnelle
+                Adresse e-mail 
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
@@ -225,14 +233,14 @@ export default function LoginPage({ onLoginSuccess }) {
               ) : (
                 <>
                   <LogIn className="w-4 h-4" />
-                  <span>Valider & Recevoir le Code par E-mail</span>
+                  <span>Valider </span>
                 </>
               )}
             </button>
 
             {/* Note de Sécurité */}
             <div className="pt-2 text-center text-[10px] text-slate-400 font-medium">
-              🔒 Authentification forte en 2 étapes avec validation par e-mail
+              🔒 Authentification  en 2 étapes,vous recevrez un Code de validation par E-mail
             </div>
 
           </form>
@@ -250,10 +258,7 @@ export default function LoginPage({ onLoginSuccess }) {
               <h2 className="text-xl font-black text-slate-900 tracking-tight pt-2">
                 Validation par E-mail
               </h2>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                Un code à 6 chiffres a été envoyé à :<br />
-                <strong className="text-slate-800 font-bold font-mono">{email}</strong>
-              </p>
+            
             </div>
 
             {/* Notification de succès d'envoi */}
@@ -282,13 +287,17 @@ export default function LoginPage({ onLoginSuccess }) {
                 type="text"
                 maxLength={6}
                 value={otpCode}
+                disabled={loading}
                 onChange={(e) => {
                   const val = e.target.value.replace(/\D/g, '').slice(0, 6);
                   setOtpCode(val);
                   setError('');
+                  if (val.length === 6) {
+                    handleVerifyOtp(val);
+                  }
                 }}
                 placeholder="• • • • • •"
-                className="w-full text-center text-2xl font-mono font-black tracking-[0.6em] py-3.5 bg-slate-50 border-2 border-slate-300 rounded-2xl text-slate-900 outline-none focus:border-aej-orange focus:bg-white focus:ring-4 focus:ring-aej-orange/20 transition shadow-inner"
+                className="w-full text-center text-2xl font-mono font-black tracking-[0.6em] py-3.5 bg-slate-50 border-2 border-slate-300 rounded-2xl text-slate-900 outline-none focus:border-aej-orange focus:bg-white focus:ring-4 focus:ring-aej-orange/20 transition shadow-inner disabled:opacity-60"
               />
               
               {/* Minuteur d'expiration (5 min) */}
@@ -314,7 +323,7 @@ export default function LoginPage({ onLoginSuccess }) {
               ) : (
                 <>
                   <ShieldCheck className="w-4 h-4" />
-                  <span>Confirmer le Code & Se Connecter</span>
+                  <span>Se Connecter</span>
                 </>
               )}
             </button>

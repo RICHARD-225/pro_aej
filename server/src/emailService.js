@@ -86,7 +86,7 @@ export async function sendOtpEmail(email, code, userName = '') {
       await getMailer().sendMail({
         from,
         to: normalizedEmail,
-        subject: `🔒 ${code} est votre code de vérification AEJ Bouaké`,
+        subject: `AEJ Bouaké 🔒 ${code} est votre code de vérification `,
         text: `Bonjour ${userName},\n\nVoici votre code d'accès à 6 chiffres pour vous connecter à la plateforme des Immersions Professionnelles AEJ Bouaké :\n\n${code}\n\nCe code est valable pendant 5 minutes.\nSi vous n'avez pas tenté de vous connecter, veuillez ignorer ce message.\n\nAgence Emploi Jeunes - Bouaké`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
