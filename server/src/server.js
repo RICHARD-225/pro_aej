@@ -37,7 +37,8 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
       imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-      connectSrc: ["'self'", ...(isDevelopment ? ['ws:', 'http://localhost:5173'] : [])],
+      // Autorise le frontend sur les deux ports Vite possibles en dev
+      connectSrc: ["'self'", ...(isDevelopment ? ['ws:', 'http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000'] : [])],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       frameAncestors: ["'none'"]
@@ -73,18 +74,21 @@ const resendOtpLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 3, standar
 const authCookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
+  // Lax en dev (cross-port 3000→5000), Strict en prod
+  sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
   path: '/',
   maxAge: 8 * 60 * 60 * 1000
 };
 
 function setAuthCookie(res, token) {
   const sameSite = authCookieOptions.sameSite[0].toUpperCase() + authCookieOptions.sameSite.slice(1);
-  res.setHeader('Set-Cookie', `aej_access_token=${encodeURIComponent(token)}; Max-Age=${authCookieOptions.maxAge / 1000}; Path=${authCookieOptions.path}; HttpOnly; SameSite=${sameSite}${authCookieOptions.secure ? '; Secure' : ''}`);
+  // Token stocké brut (sans encodeURIComponent) pour simplifier la lecture côté requireAuth
+  res.setHeader('Set-Cookie', `aej_access_token=${token}; Max-Age=${authCookieOptions.maxAge / 1000}; Path=${authCookieOptions.path}; HttpOnly; SameSite=${sameSite}${authCookieOptions.secure ? '; Secure' : ''}`);
 }
 
 function clearAuthCookie(res) {
-  res.setHeader('Set-Cookie', 'aej_access_token=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict');
+  const sameSite = process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax';
+  res.setHeader('Set-Cookie', `aej_access_token=; Max-Age=0; Path=/; HttpOnly; SameSite=${sameSite}`);
 }
 const verificationTypesSeed = [
   ['Identité conforme', "Vérification de l'identité du candidat.", 1],

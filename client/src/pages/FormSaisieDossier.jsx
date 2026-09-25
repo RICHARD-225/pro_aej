@@ -18,12 +18,28 @@ import { toDossierPayload } from '../utils/dossierMappers';
 export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, currentUser, dossiers = [], conseillersList: providedList = [] }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [errorMsg, setErrorMsg] = useState('');
-  const [validationAttempted, setValidationAttempted] = useState(false);
+  const [errorField, setErrorField] = useState('');
+  // submitAttempted : mis à true UNIQUEMENT quand l'utilisateur clique "Valider & Soumettre"
+  // Jamais déclenché par la navigation entre étapes
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   useEffect(() => {
     setErrorMsg('');
-    setValidationAttempted(false);
+    setErrorField('');
+    setSubmitAttempted(false);
   }, [currentStep]);
+
+  // Défilement fluide et focus immédiat sur le champ en erreur
+  const scrollToErrorField = (fieldName) => {
+    setErrorField(fieldName);
+    setTimeout(() => {
+      const el = document.querySelector(`[name="${fieldName}"]`);
+      if (el) {
+        el.focus();
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 60);
+  };
 
   // Liste des conseillers régionaux pour attribution par le Service Info
   const conseillersList = providedList || [];
@@ -169,8 +185,11 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
       }
       return updated;
     });
+    if (errorField === name) {
+      setErrorField('');
+      setErrorMsg('');
+    }
     setErrorMsg('');
-    setValidationAttempted(false);
   };
 
   // Remplissage rapide d'essai
@@ -180,7 +199,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
     const phoneTuteur = `07${randomDigits}`;
     const dateToday = "2026-01-07";
     setFormData({
-      conseiller_attribue_id: conseillersList[0].id,
+      conseiller_attribue_id: conseillersList[0]?.id || '',
       nom: "KOUADIO",
       prenoms: "KOUAME BRICE",
       sexe: "HOMME",
@@ -188,6 +207,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
       lieu_naissance: "BOUAKÉ",
       sous_prefecture_naissance: "BOUAKÉ",
       handicap: false,
+      autre_type_handicap: "",
       nature_piece_identite: "Carte CNI blanc",
       numero_piece_identite: `CI009${randomDigits.substring(0, 6)}`,
       contact_1: phone1,
@@ -217,50 +237,48 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
       localite_lieu_stage: "BOUAKÉ"
     });
     setErrorMsg('');
+    setErrorField('');
+    setSubmitAttempted(false);
   };
 
-  // Validation explicite étape par étape
+  // Validation étape par étape avec renvoi direct sur le champ en erreur
   const validateStep = (step) => {
+    const fail = (field, msg) => {
+      setErrorMsg(msg);
+      scrollToErrorField(field);
+      return false;
+    };
+
     if (step === 1) {
       if (!formData.nom.trim()) {
-        setErrorMsg("Erreur de saisie : Le champ 'Nom de Famille' est obligatoire.");
-        return false;
+        return fail('nom', "Erreur de saisie : Le champ 'Nom de Famille' est obligatoire.");
       }
       if (!formData.prenoms.trim()) {
-        setErrorMsg("Erreur de saisie : Le champ 'Prénom(s)' est obligatoire.");
-        return false; 
+        return fail('prenoms', "Erreur de saisie : Le champ 'Prénom(s)' est obligatoire.");
       }
       if (!formData.date_naissance.trim()) {
-        setErrorMsg("Erreur de saisie : Le champ 'Date de Naissance' est obligatoire.");
-        return false;
+        return fail('date_naissance', "Erreur de saisie : Le champ 'Date de Naissance' est obligatoire.");
       }
       if (!isValidCalendarDate(formData.date_naissance)) {
-        setErrorMsg("Erreur de format : La 'Date de Naissance' doit suivre le format valide JJ/MM/AAAA (ex: 30/05/2006).");
-        return false;
+        return fail('date_naissance', "Erreur de format : La 'Date de Naissance' doit suivre le format valide JJ/MM/AAAA (ex: 30/05/2006).");
       }
       if (!formData.numero_piece_identite.trim()) {
-        setErrorMsg("Erreur de saisie : Le 'Numéro de Pièce d'Identité' est obligatoire.");
-        return false;
+        return fail('numero_piece_identite', "Erreur de saisie : Le 'Numéro de Pièce d'Identité' est obligatoire.");
       }
       if (!formData.contact_1.trim()) {
-        setErrorMsg("Erreur de saisie : Le champ 'Contact 1' est obligatoire.");
-        return false;
+        return fail('contact_1', "Erreur de saisie : Le champ 'Contact 1' est obligatoire.");
       }
       if (!isValidPhone(formData.contact_1)) {
-        setErrorMsg("Erreur de format : Le 'Contact 1' doit comporter exactement 10 chiffres (ex: 0502837295).");
-        return false;
+        return fail('contact_1', "Erreur de format : Le 'Contact 1' doit comporter exactement 10 chiffres (ex: 0502837295).");
       }
       if (formData.contact_2 && !isValidPhone(formData.contact_2)) {
-        setErrorMsg("Erreur de format : Le 'Contact 2' doit comporter exactement 10 chiffres (ex: 0707001122).");
-        return false;
+        return fail('contact_2', "Erreur de format : Le 'Contact 2' doit comporter exactement 10 chiffres (ex: 0707001122).");
       }
       if (!formData.etablissement_frequente.trim()) {
-        setErrorMsg("Erreur de saisie : Le champ 'Établissement Fréquenté' est obligatoire.");
-        return false;
+        return fail('etablissement_frequente', "Erreur de saisie : Le champ 'Établissement Fréquenté' est obligatoire.");
       }
       if (formData.handicap && !formData.autre_type_handicap.trim()) {
-        setErrorMsg("Erreur de saisie : Le type de handicap doit être précisé.");
-        return false;
+        return fail('autre_type_handicap', "Erreur de saisie : Le type de handicap doit être précisé.");
       }
 
       const normalizedPiece = formData.numero_piece_identite.trim().toUpperCase();
@@ -271,101 +289,99 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
       );
       if (duplicate) {
         const samePiece = duplicate.candidat.numero_piece_identite?.trim().toUpperCase() === normalizedPiece;
-        setErrorMsg(samePiece
-          ? "Doublon détecté : ce numéro de pièce d'identité existe déjà dans la base."
-          : "Doublon détecté : ce contact candidat existe déjà dans la base.");
-        return false;
+        return fail(
+          samePiece ? 'numero_piece_identite' : 'contact_1',
+          samePiece
+            ? "Doublon détecté : ce numéro de pièce d'identité existe déjà dans la base."
+            : "Doublon détecté : ce contact candidat existe déjà dans la base."
+        );
       }
     } else if (step === 2) {
       if (!formData.numero_paiement.trim()) {
-        setErrorMsg("Erreur de saisie : Le 'N° de Paiement' est obligatoire.");
-        return false;
+        return fail('numero_paiement', "Erreur de saisie : Le 'N° de Paiement' est obligatoire.");
       }
       if (!isValidPhone(formData.numero_paiement)) {
-        setErrorMsg("Erreur de format : Le 'N° de Paiement' doit comporter exactement 10 chiffres (ex: 0502837295).");
-        return false;
+        return fail('numero_paiement', "Erreur de format : Le 'N° de Paiement' doit comporter exactement 10 chiffres (ex: 0502837295).");
       }
       const duplicatePayment = dossiers.find((dossier) => dossier.candidat.numero_paiement?.trim() === formData.numero_paiement.trim());
       if (duplicatePayment) {
-        setErrorMsg("Doublon détecté : ce numéro de paiement existe déjà dans la base.");
-        return false;
+        return fail('numero_paiement', "Doublon détecté : ce numéro de paiement existe déjà dans la base.");
       }
       if (!formData.nom_prenoms_tuteur.trim()) {
-        setErrorMsg("Erreur de saisie : Le 'Nom et Prénom(s) du Tuteur' est obligatoire.");
-        return false;
+        return fail('nom_prenoms_tuteur', "Erreur de saisie : Le 'Nom et Prénom(s) du Tuteur' est obligatoire.");
       }
       if (!formData.contact_tuteur.trim()) {
-        setErrorMsg("Erreur de saisie : Le 'Contact du Tuteur' est obligatoire.");
-        return false;
+        return fail('contact_tuteur', "Erreur de saisie : Le 'Contact du Tuteur' est obligatoire.");
       }
       if (!isValidPhone(formData.contact_tuteur)) {
-        setErrorMsg("Erreur de format : Le 'Contact du Tuteur' doit comporter exactement 10 chiffres (ex: 0707087609).");
-        return false;
+        return fail('contact_tuteur', "Erreur de format : Le 'Contact du Tuteur' doit comporter exactement 10 chiffres (ex: 0707087609).");
       }
     } else if (step === 3) {
       if (!formData.entreprise_nom.trim()) {
-        setErrorMsg("Erreur de saisie : Le 'Nom de l'Entreprise' est obligatoire.");
-        return false;
+        return fail('entreprise_nom', "Erreur de saisie : Le 'Nom de l'Entreprise' est obligatoire.");
       }
       if (!formData.service_affectation.trim()) {
-        setErrorMsg("Erreur de saisie : Le 'Service d'Affectation' est obligatoire.");
-        return false;
+        return fail('service_affectation', "Erreur de saisie : Le 'Service d'Affectation' est obligatoire.");
       }
       if (!formData.entreprise_contact_1.trim()) {
-        setErrorMsg("Erreur de saisie : Le contact de l'entreprise est obligatoire.");
-        return false;
+        return fail('entreprise_contact_1', "Erreur de saisie : Le contact de l'entreprise est obligatoire.");
       }
       if (!isValidPhone(formData.entreprise_contact_1)) {
-        setErrorMsg("Erreur de format : Le contact de l'entreprise doit comporter exactement 10 chiffres.");
-        return false;
+        return fail('entreprise_contact_1', "Erreur de format : Le contact de l'entreprise doit comporter exactement 10 chiffres.");
       }
       if (formData.entreprise_contact_2 && !isValidPhone(formData.entreprise_contact_2)) {
-        setErrorMsg("Erreur de format : Le contact secondaire de l'entreprise doit comporter exactement 10 chiffres.");
-        return false;
+        return fail('entreprise_contact_2', "Erreur de format : Le contact secondaire de l'entreprise doit comporter exactement 10 chiffres.");
       }
       if (!formData.date_debut_stage.trim()) {
-        setErrorMsg("Erreur de saisie : La 'Date de Début du Stage' est obligatoire.");
-        return false;
+        return fail('date_debut_stage', "Erreur de saisie : La 'Date de Début du Stage' est obligatoire.");
       }
       if (!isValidCalendarDate(formData.date_debut_stage)) {
-        setErrorMsg("Erreur de format : La 'Date de Début du Stage' doit suivre le format valide JJ/MM/AAAA (ex: 07/01/2026).");
-        return false;
+        return fail('date_debut_stage', "Erreur de format : La 'Date de Début du Stage' doit suivre le format valide JJ/MM/AAAA (ex: 07/01/2026).");
       }
       if (!formData.date_fin_previsionnelle.trim() || !isValidCalendarDate(formData.date_fin_previsionnelle)) {
-        setErrorMsg("Erreur de format : La 'Date de Fin Prévisionnelle' doit être une date valide JJ/MM/AAAA.");
-        return false;
+        return fail('date_fin_previsionnelle', "Erreur de format : La 'Date de Fin Prévisionnelle' doit être une date valide JJ/MM/AAAA.");
       }
       if (!isDateRangeValid(formData.date_debut_stage, formData.date_fin_previsionnelle)) {
-        setErrorMsg("Erreur de cohérence : La date de fin doit être postérieure ou égale à la date de début.");
-        return false;
+        return fail('date_fin_previsionnelle', "Erreur de cohérence : La date de fin doit être postérieure ou égale à la date de début.");
       }
     }
     setErrorMsg('');
+    setErrorField('');
     return true;
   };
 
   const handleNext = () => {
     setErrorMsg('');
-    setValidationAttempted(true);
+    setErrorField('');
     if (validateStep(currentStep)) {
       setErrorMsg('');
+      setErrorField('');
       setCurrentStep(prev => Math.min(prev + 1, 3));
     }
   };
 
   const handlePrev = () => {
     setErrorMsg('');
-    setValidationAttempted(false);
+    setErrorField('');
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setValidationAttempted(true);
-    if (!validateStep(3)) return;
-
+  // handleFinalSubmit : appelé UNIQUEMENT par le bouton "Valider & Soumettre" à l'étape 3
+  const handleFinalSubmit = () => {
+    setSubmitAttempted(true);
+    setErrorMsg('');
+    setErrorField('');
+    if (!validateStep(3)) {
+      return;
+    }
     const conseillerTarget = conseillersList.find(c => c.id === formData.conseiller_attribue_id) || conseillersList[0];
     onSubmit(toDossierPayload(formData, currentUser, conseillerTarget));
+  };
+
+  const getFieldBorderClass = (name) => {
+    return errorField === name 
+      ? '!border-rose-500 !ring-2 !ring-rose-400 !bg-rose-50/40' 
+      : 'border-slate-200 focus:border-aej-orange';
   };
 
   return (
@@ -445,8 +461,8 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
         </div>
       </div>
 
-      {/* EXPLICIT ERROR ALERT */}
-      {errorMsg && validationAttempted && (
+      {/* EXPLICIT ERROR ALERT — uniquement après clic sur "Valider & Soumettre" */}
+      {errorMsg && submitAttempted && (
         <div className="p-4 bg-rose-50 border border-rose-300 rounded-2xl text-rose-800 text-xs font-bold flex items-center gap-3 animate-in shake">
           <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
           <span>{errorMsg}</span>
@@ -454,7 +470,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
       )}
 
       {/* Form Wizard Body */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-6">
 
         {/* ÉTAPE 1 */}
         {currentStep === 1 && (
@@ -483,7 +499,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                   placeholder="ex: KABA"
                   value={formData.nom}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold uppercase focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-bold uppercase focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none transition-all ${getFieldBorderClass('nom')}`}
                 />
               </div>
 
@@ -495,7 +511,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                   placeholder="ex: FOTOUMATA"
                   value={formData.prenoms}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold uppercase focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-bold uppercase focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none transition-all ${getFieldBorderClass('prenoms')}`}
                 />
               </div>
 
@@ -523,7 +539,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                     onChange={handleBirthDateChange}
                     maxLength={10}
                     inputMode="numeric"
-                    className="w-full px-4 py-2.5 pr-12 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                    className={`w-full px-4 py-2.5 pr-12 bg-slate-50 border rounded-xl text-xs font-bold focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none transition-all ${getFieldBorderClass('date_naissance')}`}
                   />
 
                   <label
@@ -544,7 +560,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                   />
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Saisissez JJ/MM/AAAA ou cliquez sur le calendrier.
+                  Saisissez JJ/MM/AAAA *
                 </p>
               </div>
 
@@ -597,12 +613,12 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                   maxLength={11}
                   value={formData.numero_piece_identite}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold uppercase focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-mono font-bold uppercase focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none transition-all ${getFieldBorderClass('numero_piece_identite')}`}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1.5">Contact 1 (10 Chiffres Exacts) *</label>
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">Contact 1 (10 Chiffres) *</label>
                 <input
                   type="text"
                   name="contact_1"
@@ -610,7 +626,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                   placeholder="ex: 0502837295"
                   value={formData.contact_1}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-extrabold focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none transition-all ${getFieldBorderClass('contact_1')}`}
                 />
               </div>
 
@@ -623,7 +639,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                   placeholder="ex: 0707001122"
                   value={formData.contact_2}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none transition-all ${getFieldBorderClass('contact_2')}`}
                 />
               </div>
 
@@ -664,7 +680,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                   value={formData.etablissement_frequente}
                   onChange={handleChange}
                   list="etablissements-existants"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold uppercase focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-semibold uppercase focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none transition-all ${getFieldBorderClass('etablissement_frequente')}`}
                 />
                 <datalist id="etablissements-existants">{establishmentSuggestions.map((value) => <option key={value} value={value} />)}</datalist>
               </div>
@@ -702,7 +718,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                     placeholder="ex: Handicap moteur membre inférieur, malvoyant..."
                     value={formData.autre_type_handicap}
                     onChange={handleChange}
-                    className="w-full px-4 py-2.5 bg-white border border-orange-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                    className={`w-full px-4 py-2.5 bg-white border rounded-xl text-xs font-bold focus:ring-2 focus:ring-aej-orange/40 outline-none transition-all ${getFieldBorderClass('autre_type_handicap')}`}
                   />
                 </div>
               )}
@@ -722,7 +738,6 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 text-base">Étape 2 : Mode de Paiement & Contact du Tuteur</h3>
-                  <p className="text-xs text-slate-500">Ces données servent au versement des allocations et à l'accompagnement.</p>
                 </div>
               </div>
               <span className="text-xs font-extrabold text-slate-400">Étape 2/3</span>
@@ -745,7 +760,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1.5">N° de Paiement (10 Chiffres Exacts) *</label>
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">N° de Paiement (10 Chiffres ) *</label>
                 <input
                   type="text"
                   name="numero_paiement"
@@ -753,7 +768,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                   placeholder="ex: 0502837295"
                   value={formData.numero_paiement}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-mono font-bold focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none transition-all ${getFieldBorderClass('numero_paiement')}`}
                 />
               </div>
 
@@ -765,7 +780,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                   placeholder="ex: KABA SAIDOU"
                   value={formData.nom_prenoms_tuteur}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold uppercase focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-bold uppercase focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none transition-all ${getFieldBorderClass('nom_prenoms_tuteur')}`}
                 />
               </div>
 
@@ -784,7 +799,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1.5">Contact du Tuteur (10 Chiffres Exacts) *</label>
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">Contact du Tuteur (10 Chiffres) *</label>
                 <input
                   type="text"
                   name="contact_tuteur"
@@ -792,7 +807,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                   placeholder="ex: 0707087609"
                   value={formData.contact_tuteur}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-bold focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none transition-all ${getFieldBorderClass('contact_tuteur')}`}
                 />
               </div>
 
@@ -812,7 +827,6 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 text-base">Étape 3 : Entreprise d'Accueil & Période de Stage</h3>
-                  <p className="text-xs text-slate-500">Définissez la structure d'accueil et le poste d'affectation.</p>
                 </div>
               </div>
               <span className="text-xs font-extrabold text-slate-400">Étape 3/3</span>
@@ -829,7 +843,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                   value={formData.entreprise_nom}
                   onChange={handleChange}
                   list="entreprises-existantes"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold uppercase focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-extrabold uppercase focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none transition-all ${getFieldBorderClass('entreprise_nom')}`}
                 />
                 <datalist id="entreprises-existantes">{enterpriseSuggestions.map((dossier) => <option key={dossier.entreprise_id} value={dossier.entreprise.raison_sociale} />)}</datalist>
               </div>
@@ -871,7 +885,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                   value={formData.service_affectation}
                   onChange={handleChange}
                   list="services-existants"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold uppercase focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-bold uppercase focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none transition-all ${getFieldBorderClass('service_affectation')}`}
                 />
                 <datalist id="services-existants">{[...new Set(dossiers.map((dossier) => dossier.service_affectation).filter(Boolean))].map((value) => <option key={value} value={value} />)}</datalist>
               </div>
@@ -885,7 +899,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                   placeholder="ex: 0102030405"
                   value={formData.entreprise_contact_1}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-bold focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none transition-all ${getFieldBorderClass('entreprise_contact_1')}`}
                 />
               </div>
 
@@ -898,7 +912,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                   placeholder="ex: 0708091011"
                   value={formData.entreprise_contact_2}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none transition-all ${getFieldBorderClass('entreprise_contact_2')}`}
                 />
               </div>
 
@@ -938,7 +952,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                   placeholder="ex: 07/01/2026"
                   value={formData.date_debut_stage}
                   onChange={handleDateDebutChange}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none"
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-bold focus:bg-white focus:ring-2 focus:ring-aej-orange/40 outline-none transition-all ${getFieldBorderClass('date_debut_stage')}`}
                 />
               </div>
 
@@ -953,7 +967,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
                   placeholder="Calculé auto après la date de début..."
                   value={formData.date_fin_previsionnelle}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-emerald-50/60 border border-emerald-300 rounded-xl text-xs font-extrabold text-emerald-950 outline-none"
+                  className={`w-full px-4 py-2.5 bg-emerald-50/60 border rounded-xl text-xs font-extrabold text-emerald-950 outline-none transition-all ${getFieldBorderClass('date_fin_previsionnelle')}`}
                 />
               </div>
 
@@ -994,7 +1008,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
             </button>
           ) : (
             <button
-              type="submit"
+              type="button" onClick={handleFinalSubmit}
               className="flex items-center gap-2 px-8 py-3 rounded-xl bg-gradient-to-r from-aej-green to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold text-xs shadow-lg shadow-emerald-700/25 transition-all transform hover:-translate-y-0.5"
             >
               <span>Valider & Soumettre le Dossier</span>
@@ -1002,7 +1016,7 @@ export default function FormSaisieDossier({ onSubmit, onCancel, referentiels, cu
           )}
         </div>
 
-      </form>
+      </div>
     </div>
   );
 }

@@ -55,6 +55,18 @@ export default function App() {
 
   // Une session expirée revient proprement à la connexion, sans conserver de données sensibles à l'écran.
   const loadApplication = async () => {
+    // Sécurité : isolation stricte de session par onglet / fenêtre
+    // Si l'URL est copiée dans un autre onglet, fenêtre ou machine, sessionStorage sera vide
+    // et l'utilisateur sera obligatoirement redirigé vers l'interface de connexion.
+    const isTabAuthenticated = window.sessionStorage.getItem('aej_tab_authenticated');
+    if (!isTabAuthenticated) {
+      setCurrentUser(null);
+      setDossiers([]);
+      setReferentiels(null);
+      setLoading(false);
+      return;
+    }
+
     const currentUserData = await getCurrentUser();
     if (currentUserData.role === 'SUPER_ADMIN') {
       setCurrentUser(currentUserData);
@@ -99,6 +111,7 @@ export default function App() {
 
   useEffect(() => {
     const handleExpiredSession = () => {
+      window.sessionStorage.removeItem('aej_tab_authenticated');
       setCurrentUser(null);
       setDossiers([]);
       setReferentiels(null);
@@ -109,10 +122,18 @@ export default function App() {
 
   const handleLogin = async (email, password) => {
     await login(email, password);
+    window.sessionStorage.setItem('aej_tab_authenticated', 'true');
     await loadApplication();
   };
 
-  const handleLogout = () => { logout(); setCurrentUser(null); setDossiers([]); setReferentiels(null); setUsers([]); };
+  const handleLogout = () => { 
+    window.sessionStorage.removeItem('aej_tab_authenticated');
+    logout(); 
+    setCurrentUser(null); 
+    setDossiers([]); 
+    setReferentiels(null); 
+    setUsers([]); 
+  };
 
   const handleAgencyCreated = (agency) => setAgences((previous) => [agency, ...previous]);
 
@@ -404,7 +425,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'dashboard' && currentUser.role === 'DIRECTION' && (
+          {(activeTab === 'stats' || (activeTab === 'dashboard' && currentUser.role === 'DIRECTION')) && (
             <DashboardDirection
               dossiers={dossiers}
               stats={{ kpis: counts }}
